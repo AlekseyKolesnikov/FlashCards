@@ -34,6 +34,22 @@ class Card extends Model
     }
 
     /**
+     * Which side (1 or 2) holds the given language.
+     */
+    public function sideOf(int $languageId): int
+    {
+        return (int) $this->lang1_id === $languageId ? 1 : 2;
+    }
+
+    /**
+     * The word, notes or examples on the side of the given language.
+     */
+    public function sideField(string $field, int $languageId): ?string
+    {
+        return $this->{$field.$this->sideOf($languageId)};
+    }
+
+    /**
      * Cards with these two languages, stored in either order.
      *
      * @param  Builder<Card>  $query

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\LearnController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -47,7 +48,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 Route::middleware(['auth', 'role:learner'])->group(function () {
-    Route::view('/learn', 'learn.index')->name('learn.index');
+    Route::get('/learn', [LearnController::class, 'index'])->name('learn.index');
+    Route::post('/learn', [LearnController::class, 'start'])->name('learn.start');
+    Route::get('/learn/sessions/{session}', [LearnController::class, 'show'])->name('learn.show');
+    Route::post('/learn/sessions/{session}/answer', [LearnController::class, 'answer'])->name('learn.answer');
+    Route::get('/learn/sessions/{session}/result', [LearnController::class, 'result'])->name('learn.result');
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 });

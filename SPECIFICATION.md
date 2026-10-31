@@ -223,7 +223,9 @@ Inputs: the learner's session size S and postponement P (§9.2), and the new ses
 2. Fill up to S cards from the **pool**: new cards and released cards together, lowest complexity first, in random order within one complexity. When a complexity level runs out, continue with the next one.
    - A new card gets a progress record with retry = 1.
    - A released card gets retry = 1 and an empty `learned_session`.
-3. If the pool runs out, the session has fewer than S cards. If it has none, show "There are no cards to learn in this direction right now."
+3. If the pool runs out, the session has fewer than S cards.
+   - If there would be no cards at all, but some learned cards are still postponed, take up to S of them, those closest to release first, and set their retry to 1. Without this, no session could be built, the session number would never advance, and postponed cards would never be released.
+   - If there are no cards at all, show "There are no cards to learn in this direction right now."
 4. Shuffle the cards to form the queue.
 
 ### 8.3 Effect of an answer
@@ -359,7 +361,7 @@ These are accepted for v1 on purpose. They will be revisited once the app has be
 
 1. **Repeats follow the retry counter.** X wrong answers mean X more sessions. The original RoundUp(X/2) rule is dropped for now, and the counter has no ceiling.
 2. **Postponement counts sessions, not time.** Several sessions in one evening release learned cards quickly. A long break releases nothing.
-3. **No early release.** When the pool runs out, sessions get shorter. Postponed cards are not brought back early (the original "or until all words are used" rule).
+3. **Little early release.** When the pool runs out, sessions get shorter. Postponed cards come back early only when a session would otherwise be empty (§8.2 step 3), not to fill a short session (the original "or until all words are used" rule).
 4. **Released cards compete with new cards by complexity.** A released card with high complexity waits until all lower-complexity cards are used.
 5. **Look-alike characters must match exactly.** A typographic apostrophe `’` is not the same as `'`. The same goes for the different dashes and quote marks. Text pasted from Word or exported from Anki often contains them.
 6. **Same prompt on two cards** (§4.3 rule 2) until synonyms are supported.

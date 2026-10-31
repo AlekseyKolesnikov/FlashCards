@@ -402,6 +402,114 @@ textarea:focus {
     color: var(--ok);
 }
 
+.directions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.direction h2 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    color: var(--muted);
+}
+
+.counts strong {
+    color: var(--text);
+}
+
+.direction .button {
+    margin-top: 0.25rem;
+}
+
+.learn-header {
+    max-width: 640px;
+    margin: 0 auto 0.75rem;
+    font-size: 0.875rem;
+}
+
+.study {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.study h1 {
+    font-size: 1.375rem;
+}
+
+.study h2 {
+    margin-top: 1.5rem;
+    font-size: 1.125rem;
+}
+
+.prompt {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.prompt-notes {
+    margin: 0.25rem 0 0;
+    color: var(--muted);
+    font-style: italic;
+}
+
+.examples {
+    margin: 1rem 0 0;
+    padding: 0.625rem 0.875rem;
+    border-left: 3px solid var(--border);
+    background: var(--bg);
+    white-space: pre-line;
+}
+
+.answer-form {
+    margin-top: 1.5rem;
+}
+
+.answer-form input {
+    font-size: 1.25rem;
+}
+
+.mark {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.mark.correct {
+    color: var(--ok);
+}
+
+.mark.wrong {
+    color: var(--error);
+}
+
+.your-answer {
+    margin: 0.5rem 0 0;
+}
+
+.your-answer span {
+    color: var(--error);
+    text-decoration: line-through;
+}
+
+.study form .button,
+.study .next {
+    margin-top: 1.25rem;
+}
+
+.study .buttons form .button {
+    margin-top: 0;
+}
+
 .notice.warning {
     border-color: #9a6700;
     background: #fff8c5;

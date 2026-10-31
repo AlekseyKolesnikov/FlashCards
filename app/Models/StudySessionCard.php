@@ -29,6 +29,9 @@ class StudySessionCard extends Model
     protected function casts(): array
     {
         return [
+            'card_id' => 'integer',
+            'position' => 'integer',
+            'wrong_count' => 'integer',
             'done' => 'boolean',
         ];
     }

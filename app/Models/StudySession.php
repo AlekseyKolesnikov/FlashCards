@@ -27,9 +27,31 @@ class StudySession extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
+            'from_lang_id' => 'integer',
+            'to_lang_id' => 'integer',
+            'seq' => 'integer',
             'status' => StudySessionStatus::class,
             'finished_at' => 'datetime',
         ];
+    }
+
+    public function isOpen(): bool
+    {
+        return $this->status === StudySessionStatus::Open;
+    }
+
+    /**
+     * The card to ask next: the lowest queue position that is not done.
+     */
+    public function currentEntry(): ?StudySessionCard
+    {
+        return $this->cards()->where('done', false)->orderBy('position')->first();
+    }
+
+    public function cardsLeft(): int
+    {
+        return $this->cards()->where('done', false)->count();
     }
 
     /**

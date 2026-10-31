@@ -22,6 +22,17 @@ class LearnerCard extends Model
     ];
 
     /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'retry' => 'integer',
+            'learned_session' => 'integer',
+        ];
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
