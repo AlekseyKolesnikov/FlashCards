@@ -1,0 +1,365 @@
+# FlashCards — Specification v0.2
+
+Status: agreed for v1 · 2026-10-31
+
+## 1. Purpose and scope
+
+A web application for learning foreign words with flashcards. An admin maintains one shared vocabulary of two-language cards. Learners study it by typing the translation of the word shown. The app tracks each learner's progress per card and uses it to decide which cards appear in each session.
+
+Version 1 is web-only. It must run on PHP shared hosting and locally under XAMPP.
+
+## 2. Roles
+
+| Role | Can | Cannot |
+|---|---|---|
+| Admin | Manage languages and cards, import and export | Learn |
+| Learner | Learn, change own learning settings | Edit the vocabulary, see other learners' data |
+
+- There is one vocabulary. Learners see it only through learn mode.
+- Learners are isolated: each has their own progress, sessions and settings.
+- Roles are checked on the server for every request, not only hidden in the UI.
+
+## 3. Terms
+
+| Term | Meaning |
+|---|---|
+| Card | A word in language 1 and its translation in language 2, with optional notes and examples for each side |
+| Direction | The "from" and "to" languages a learner picks, e.g. EN → DE. A card with EN and DE can be studied in both directions |
+| Session | One study run in one direction: a fixed set of cards, each asked until it has been answered correctly once |
+| Queue | The order in which the session's remaining cards are asked |
+| Retry counter | Kept per learner, card and direction. While it is above 0, the card is included in every new session |
+| New / active / learned | The card has no progress record yet / retry > 0 / retry = 0 |
+| Postponement (P) | Number of sessions a learned card is skipped. After that it is released back to the pool |
+| Pool | The cards a new session can draw from: new cards and released learned cards |
+
+## 4. Vocabulary
+
+### 4.1 Card fields
+
+| Field | Required | Rules |
+|---|---|---|
+| Language 1 | yes | From the language list |
+| Word 1 | yes | Max 255 characters. Exactly the expected answer: no brackets or optional parts (put those in Notes) |
+| Notes 1 | no | Max 255 characters, e.g. "female, plural" |
+| Examples 1 | no | Free text memo, multi-line, max 2000 characters |
+| Language 2 | yes | Must differ from Language 1 |
+| Word 2, Notes 2, Examples 2 | as above | Same rules as side 1 |
+| Complexity | yes | Integer 1–10, default 5. Lower values are learned first |
+
+Notes and examples are shown as plain text with line breaks kept. No HTML or Markdown.
+
+### 4.2 Languages
+
+- The admin manages a list of languages: a unique code (e.g. `de`) and a display name (e.g. "German").
+- A language can be deleted only when no card uses it.
+
+### 4.3 Vocabulary rules
+
+1. **Duplicates.** Two cards are duplicates when they have the same two languages, in either order, and both words are equal after normalization (§7.1). A duplicate is rejected when saved and skipped on import.
+2. **Same word, different translation.** Two cards with the same word on one side but different translations are allowed, with a warning. The learner would see the same prompt with two different expected answers, so the notes or examples should tell them apart. Proper support comes with synonyms (§11).
+3. Editing words, notes, examples or complexity keeps learners' progress.
+4. Changing a card's languages resets all learners' progress for that card and removes it from open sessions.
+5. Deleting a card is permanent. It also removes the card from all learners' progress and open sessions. If an open session has no cards left, it is marked finished.
+
+## 5. Admin functions
+
+### 5.1 Card list
+
+- Filter by language pair and complexity. Search in both words. Sort by any column. 50 cards per page.
+- Columns: language 1, word 1, language 2, word 2, complexity, edit, delete.
+- Select several rows and delete them, after a confirmation.
+
+### 5.2 Add and edit a card
+
+- A form with the fields from §4.1. Validation errors appear next to the field.
+- "Save and add another" keeps both languages and the complexity selected, for fast entry.
+
+### 5.3 Delete a card
+
+The confirmation dialog shows both words. There is no undo.
+
+### 5.4 CSV import and export
+
+**Format**
+- UTF-8, with or without a BOM. The delimiter (comma, semicolon or tab) is detected automatically, because Excel in many locales saves with semicolons.
+- Fields are quoted per RFC 4180. Quoted fields may span several lines.
+- A header row is required. Columns can be in any order, and unknown columns are ignored:
+
+```
+lang1,word1,notes1,examples1,lang2,word2,notes2,examples2,complexity
+```
+
+- `lang1` and `lang2` are language codes that must already exist. An empty `complexity` means 5.
+
+**Import**
+1. The admin uploads a file. The app checks every row without saving anything.
+2. A preview shows how many rows will be imported, the duplicates that will be skipped, and the errors with their row numbers.
+3. After the admin confirms, the valid rows are saved in one transaction.
+
+The maximum file size is the host's PHP `upload_max_filesize`. Target: 10,000 rows.
+
+**Export**
+- All cards or one language pair, in the format above.
+- UTF-8 with a BOM and comma delimiter, so Excel shows non-Latin text correctly.
+- Importing an export into an empty vocabulary must reproduce the same cards.
+
+### 5.5 Anki import and export
+
+**Import** reads Anki's "Notes in Plain Text (.txt)" export:
+- The admin picks language 1, language 2 and one complexity for all rows.
+- The admin maps each column to word 1, word 2, notes 1, notes 2, examples 1, examples 2 or "ignore", looking at a preview of the first 5 rows.
+- Lines starting with `#` are Anki headers. A `#separator:` header is honoured; without one, the separator is a tab.
+- HTML is stripped: `<br>` becomes a line break, tags are removed and entities are decoded.
+- The preview, confirmation and duplicate rules from §5.4 apply.
+
+**Export** writes a tab-separated `.txt` that Anki can import:
+
+```
+#separator:Tab
+#html:true
+#columns:Word 1	Word 2	Notes 1	Notes 2	Examples 1	Examples 2	Tags
+#tags column:7
+```
+
+- Text is HTML-escaped and line breaks become `<br>`.
+- Complexity is written as a tag, e.g. `complexity_5`.
+
+Anki package files (`.apkg`) are out of scope (§11).
+
+## 6. Learn mode
+
+### 6.1 Start page
+
+- Lists every direction that has cards. Each language pair that has cards is offered in both directions.
+- Each direction shows its counts of new, active and learned cards, and a **Resume** button if a session is open.
+- Choosing a direction resumes its open session, or builds a new one (§8.2).
+- A learner can have at most one open session per direction.
+
+### 6.2 Question screen
+
+For a card studied from language A to language B:
+- the word in language A, in large text
+- the notes in language A
+- the examples in language A, below the word
+- an answer field, focused automatically
+- **Submit** (Enter) and **I don't know**
+- the number of cards left in the session
+
+The language B side is not sent to the browser before the answer is submitted.
+
+### 6.3 Result screen
+
+- A correct or incorrect mark.
+- On a wrong answer or "I don't know": the learner's answer and the correct answer.
+- On a correct answer: the stored word as well, so the learner sees its exact spelling.
+- The notes and examples in language B.
+- **Next** (Enter).
+
+### 6.4 Session end
+
+- A summary: the number of cards, how many were correct on the first try, and the cards with mistakes (word, correct answer, number of wrong answers).
+- Buttons: **Start next session** and **Back to start page**.
+
+### 6.5 Leaving a session
+
+The learner can leave at any time. Progress is saved after every answer, and the session resumes at the same point next time.
+
+### 6.6 Repeated submissions
+
+Each answer request carries the card ID. The server accepts it only when that card is first in the queue. A refreshed or repeated request is ignored and redirected, so the retry counter is never changed twice for one answer.
+
+## 7. Answer checking
+
+### 7.1 Normalization
+
+Both the typed answer and the stored word go through these steps before comparison:
+
+1. Unicode NFC, so "é" typed as one character equals "e" plus a combining accent.
+2. Lower case, Unicode-aware (`Ä` → `ä`, `ẞ` → `ß`).
+3. Remove dots (`.`) and commas (`,`).
+4. Trim, and collapse any run of whitespace (including non-breaking spaces) into one space.
+
+The answer is correct when the two results are equal. Everything else must match the stored word exactly: accents, articles, the English "to", spelling variants, other punctuation (`'` `-` `!` `?` and so on) and typos.
+
+### 7.2 Examples (also used as unit tests)
+
+| Stored word | Typed | Result | Reason |
+|---|---|---|---|
+| der Hund | `  Der   Hund ` | correct | Case and extra spaces ignored |
+| der Hund | `der Hund.` | correct | Dot dropped |
+| der Hund, die Hunde | `der Hund die Hunde` | correct | Comma dropped |
+| der Hund | `der Hund!` | wrong | Only dots and commas are dropped |
+| der Hund | `derHund` | wrong | The space between words must be there |
+| der Hund | `Hund` | wrong | Article missing |
+| café | `cafe` | wrong | Accent missing |
+| Straße | `strasse` | wrong | ß is not ss |
+| to go | `go` | wrong | "to" missing |
+| colour | `color` | wrong | Spelling variant |
+| l'eau | `leau` | wrong | Apostrophe must match |
+| l’eau | `l'eau` | wrong | Typographic and straight apostrophes are different characters (§12) |
+| e-mail | `email` | wrong | Hyphen must match |
+
+### 7.3 "I don't know"
+
+Counts as a wrong answer.
+
+## 8. Sessions and progress
+
+### 8.1 Progress record
+
+Each learner has a progress record for every card and direction they have studied:
+- `retry`: an integer ≥ 0, created as 1 when the card first enters a session in that direction.
+- `learned_session`: the number of the session in which `retry` last reached 0. Empty while the card is active.
+
+Sessions are numbered separately for each learner and direction: 1, 2, 3, and so on.
+
+A learned card is **released** back to the pool after P sessions: when the new session's number is greater than `learned_session + P`.
+
+### 8.2 Building a new session
+
+Inputs: the learner's session size S and postponement P (§9.2), and the new session's number.
+
+1. Take **all active cards** (retry > 0). They are always included, even if there are more than S. That can only happen after the learner lowers S.
+2. Fill up to S cards from the **pool**: new cards and released cards together, lowest complexity first, in random order within one complexity. When a complexity level runs out, continue with the next one.
+   - A new card gets a progress record with retry = 1.
+   - A released card gets retry = 1 and an empty `learned_session`.
+3. If the pool runs out, the session has fewer than S cards. If it has none, show "There are no cards to learn in this direction right now."
+4. Shuffle the cards to form the queue.
+
+### 8.3 Effect of an answer
+
+| Answer | Retry | Queue |
+|---|---|---|
+| Correct | Decrease by 1, not below 0. When it reaches 0, set `learned_session` to this session's number | The card is done for this session |
+| Wrong, or "I don't know" | Increase by 1 | The card moves to the end of the queue |
+
+The session finishes when every card has been answered correctly once.
+
+Results of these rules:
+- A card is learned only in a session where it is answered correctly on the first try.
+- After a session with X wrong answers, a card starting at retry 1 is shown in the next X sessions, if each of them is answered correctly first time.
+
+### 8.4 Worked example
+
+With P = 2 (the default is 10):
+
+| Session | Shown | Answers | Retry |
+|---|---|---|---|
+| 1 | yes, new | wrong, wrong, correct | 1 → 2 → 3 → 2 |
+| 2 | yes, active | correct | 2 → 1 |
+| 3 | yes, active | wrong, correct | 1 → 2 → 1 |
+| 4 | yes, active | correct | 1 → 0, learned, `learned_session` = 4 |
+| 5, 6 | no, postponed | — | 0 |
+| 7 | released (7 > 4 + 2), shown if picked from the pool | correct | 1 → 0, `learned_session` = 7 |
+
+## 9. Accounts and settings
+
+### 9.1 Accounts
+
+- **Registration**: anyone can create a learner account with a username (3–32 characters, unique, case-insensitive) and a password (at least 8 characters, typed twice). Registration can be turned off in configuration.
+- **Login and logout.** Passwords are stored as hashes.
+- **First admin**: created on a one-time install page (§10.3). Further admins are added directly in the database in v1.
+- There is no email, password reset or user management in v1.
+
+### 9.2 Learner settings
+
+Each learner sets these on a Settings page:
+
+| Setting | Range | Default |
+|---|---|---|
+| Words per session (S) | 5–100 | 20 |
+| Learned words postponed for P sessions | 1–100 | 10 |
+
+- Defaults come from the configuration file (`.env`).
+- Changes apply from the next new session. An open session keeps its cards.
+- A changed P also applies to cards already learned, because release is checked each time a session is built.
+
+## 10. Technical design
+
+### 10.1 Stack
+
+- **PHP + Laravel.** Use the newest Laravel version whose PHP requirement is met by both XAMPP and the host. Laravel 12 needs PHP 8.2+. Check XAMPP's PHP version first.
+- **MySQL or MariaDB.** XAMPP includes MariaDB. Use `utf8mb4` everywhere.
+- **Pages rendered on the server** with Blade, plain CSS and a little vanilla JavaScript (autofocus, Enter shortcuts). No Node build step in v1, so deployment is a file upload.
+- **PHP extensions**: `intl` (for `Normalizer`), `mbstring`, `pdo_mysql`. In XAMPP, `extension=intl` must be enabled in `php.ini`.
+- **Business logic** lives in plain classes that controllers call: `AnswerChecker`, `SessionBuilder`, `ProgressService`, `CsvImporter`, `AnkiImporter`.
+- **Unit tests** (Pest or PHPUnit) cover at least the table in §7.2 and the walk-through in §8.4.
+
+### 10.2 Data model
+
+```
+users                id, username (unique), password, role ENUM(admin, learner),
+                     session_size NULL, postpone_sessions NULL, timestamps
+
+languages            id, code (unique), name
+
+cards                id, complexity TINYINT(1–10),
+                     lang1_id → languages, word1, word1_norm, notes1, examples1,
+                     lang2_id → languages, word2, word2_norm, notes2, examples2,
+                     timestamps
+                     index (lang1_id, lang2_id, complexity)
+
+learner_cards        id, user_id → users (cascade), card_id → cards (cascade),
+                     from_lang_id → languages, retry SMALLINT UNSIGNED DEFAULT 1,
+                     learned_session INT NULL, timestamps
+                     unique (user_id, card_id, from_lang_id)
+
+study_sessions       id, user_id → users (cascade), from_lang_id, to_lang_id,
+                     seq INT, status ENUM(open, finished), created_at, finished_at
+                     unique (user_id, from_lang_id, to_lang_id, seq)
+
+study_session_cards  id, study_session_id → study_sessions (cascade),
+                     card_id → cards (cascade), position INT,
+                     wrong_count SMALLINT DEFAULT 0, done BOOL DEFAULT 0
+                     unique (study_session_id, card_id)
+```
+
+Notes:
+- `*_norm` columns hold the normalized word (§7.1) and use the `utf8mb4_bin` collation. The usual `utf8mb4_unicode_ci` treats é and e as equal, which would break the duplicate check.
+- The duplicate check runs in code, because it has to match cards stored in either language order.
+- Session tables are named `study_sessions` and `study_session_cards`, because Laravel already uses a `sessions` table for logins.
+- The queue: the next card is the one with the lowest `position` among cards not done. A wrong answer sets the card's `position` to the current maximum + 1.
+
+### 10.3 Deployment
+
+- **Local**: XAMPP plus Composer (installed separately). The site is served from `public/`.
+- **Shared hosting**:
+  1. Run `composer install --no-dev` locally and upload the project, including `vendor/`.
+  2. Point the document root at `public/`. If the host does not allow that, use an `.htaccess` rewrite.
+  3. Make `storage/` and `bootstrap/cache/` writable.
+  4. Fill in `.env` with the database settings, `INSTALL_TOKEN`, `REGISTRATION_OPEN` and the setting defaults.
+- **Install page** `/install?token=…`: many shared hosts have no SSH, so this page runs the database migrations and creates the first admin. It answers 404 once an admin exists.
+
+### 10.4 Security baseline
+
+Laravel's defaults cover most of this:
+- hashed passwords
+- CSRF tokens on all forms
+- escaped output
+- parameterized queries
+- role checks on every route
+
+## 11. Out of scope for v1
+
+- Synonyms and multiple accepted answers
+- Typo tolerance and an "I was right" override
+- On-screen keyboard for special characters
+- Email, password reset, user management screens, account deletion
+- Registration limits and bot protection (decide before public release)
+- Statistics, layout optimized for mobile, text-to-speech
+- Offline use, local desktop build, mobile app
+- Time-based spaced repetition (SM-2, FSRS)
+- Anki `.apkg` packages
+- Decks or topics inside a language pair
+
+## 12. Known gaps
+
+These are accepted for v1 on purpose. They will be revisited once the app has been used for a while.
+
+1. **Repeats follow the retry counter.** X wrong answers mean X more sessions. The original RoundUp(X/2) rule is dropped for now, and the counter has no ceiling.
+2. **Postponement counts sessions, not time.** Several sessions in one evening release learned cards quickly. A long break releases nothing.
+3. **No early release.** When the pool runs out, sessions get shorter. Postponed cards are not brought back early (the original "or until all words are used" rule).
+4. **Released cards compete with new cards by complexity.** A released card with high complexity waits until all lower-complexity cards are used.
+5. **Look-alike characters must match exactly.** A typographic apostrophe `’` is not the same as `'`. The same goes for the different dashes and quote marks. Text pasted from Word or exported from Anki often contains them.
+6. **Same prompt on two cards** (§4.3 rule 2) until synonyms are supported.
+7. **Default complexity is 5** when none is given in the form or on import. Not yet confirmed.
