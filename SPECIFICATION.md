@@ -328,7 +328,8 @@ Notes:
   2. Point the document root at `public/`. If the host does not allow that, use an `.htaccess` rewrite.
   3. Make `storage/` and `bootstrap/cache/` writable.
   4. Fill in `.env` with the database settings, `INSTALL_TOKEN`, `REGISTRATION_OPEN` and the setting defaults.
-- **Install page** `/install?token=…`: many shared hosts have no SSH, so this page runs the database migrations and creates the first admin. It answers 404 once an admin exists.
+- **Install page** `/install?token=…`: many shared hosts have no SSH, so this page runs the database migrations and creates the first admin. It answers 404 once an admin exists, or when `FLASHCARDS_INSTALL_TOKEN` is empty.
+- **Login sessions and cache are stored in files** (`SESSION_DRIVER=file`, `CACHE_STORE=file`), so the install page works before any database tables exist.
 
 ### 10.4 Security baseline
 
