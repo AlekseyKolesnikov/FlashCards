@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\CardController;
+use App\Http\Controllers\Admin\ExportController;
+use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\InstallController;
@@ -25,7 +29,21 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::view('/', 'admin.index')->name('index');
+    Route::redirect('/', '/admin/cards')->name('index');
+
+    Route::delete('cards', [CardController::class, 'destroyMany'])->name('cards.destroy-many');
+    Route::resource('cards', CardController::class)->except('show');
+    Route::resource('languages', LanguageController::class)->except('show', 'create');
+
+    Route::get('import', [ImportController::class, 'index'])->name('import.index');
+    Route::post('import/csv', [ImportController::class, 'uploadCsv'])->name('import.csv');
+    Route::post('import/anki', [ImportController::class, 'uploadAnki'])->name('import.anki');
+    Route::get('import/mapping', [ImportController::class, 'mapping'])->name('import.mapping');
+    Route::post('import/mapping', [ImportController::class, 'saveMapping']);
+    Route::get('import/preview', [ImportController::class, 'preview'])->name('import.preview');
+    Route::post('import', [ImportController::class, 'store'])->name('import.store');
+    Route::delete('import', [ImportController::class, 'cancel'])->name('import.cancel');
+    Route::get('export', ExportController::class)->name('export');
 });
 
 Route::middleware(['auth', 'role:learner'])->group(function () {

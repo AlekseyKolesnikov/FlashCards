@@ -58,7 +58,7 @@ Notes and examples are shown as plain text with line breaks kept. No HTML or Mar
 1. **Duplicates.** Two cards are duplicates when they have the same two languages, in either order, and both words are equal after normalization (§7.1). A duplicate is rejected when saved and skipped on import.
 2. **Same word, different translation.** Two cards with the same word on one side but different translations are allowed, with a warning. The learner would see the same prompt with two different expected answers, so the notes or examples should tell them apart. Proper support comes with synonyms (§11).
 3. Editing words, notes, examples or complexity keeps learners' progress.
-4. Changing a card's languages resets all learners' progress for that card and removes it from open sessions.
+4. Changing a card's languages resets all learners' progress for that card and removes it from open sessions. Swapping the two sides (same two languages) keeps progress.
 5. Deleting a card is permanent. It also removes the card from all learners' progress and open sessions. If an open session has no cards left, it is marked finished.
 
 ## 5. Admin functions

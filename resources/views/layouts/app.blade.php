@@ -10,6 +10,7 @@
         {{ config('app.name') }}
     </title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <script src="{{ asset('js/app.js') }}" defer></script>
 </head>
 <body>
     <header class="site-header">
@@ -18,7 +19,9 @@
         @auth
             <nav class="nav">
                 @if (auth()->user()->isAdmin())
-                    <a href="{{ route('admin.index') }}">Vocabulary</a>
+                    <a href="{{ route('admin.cards.index') }}">Cards</a>
+                    <a href="{{ route('admin.languages.index') }}">Languages</a>
+                    <a href="{{ route('admin.import.index') }}">Import / export</a>
                 @else
                     <a href="{{ route('learn.index') }}">Learn</a>
                     <a href="{{ route('settings.edit') }}">Settings</a>
@@ -36,6 +39,12 @@
     <main class="container">
         @if (session('status'))
             <p class="notice">{{ session('status') }}</p>
+        @endif
+        @if (session('warning'))
+            <p class="notice warning">{{ session('warning') }}</p>
+        @endif
+        @if (session('error'))
+            <p class="notice danger">{{ session('error') }}</p>
         @endif
 
         @yield('content')

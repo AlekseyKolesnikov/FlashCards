@@ -24,6 +24,9 @@ class SettingsController extends Controller
         $data = $request->validate([
             'session_size' => ['required', 'integer', "between:{$size['min']},{$size['max']}"],
             'postpone_sessions' => ['required', 'integer', "between:{$postpone['min']},{$postpone['max']}"],
+        ], [], [
+            'session_size' => 'words per session',
+            'postpone_sessions' => 'postponement',
         ]);
 
         $request->user()->update($data);

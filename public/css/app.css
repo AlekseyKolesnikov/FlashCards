@@ -39,9 +39,27 @@ a {
     text-decoration: none;
 }
 
+.site-header {
+    flex-wrap: wrap;
+}
+
 .nav {
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+}
+
+.nav a,
+.logout {
+    white-space: nowrap;
+}
+
+/* On narrow screens the navigation gets its own row under the brand and logout. */
+@media (max-width: 640px) {
+    .nav {
+        order: 3;
+        width: 100%;
+    }
 }
 
 .logout {
@@ -90,19 +108,238 @@ h1 {
     font-weight: 600;
 }
 
-.form input {
+.form input,
+.form select,
+.form textarea {
     display: block;
     width: 100%;
     margin-top: 0.25rem;
     padding: 0.5rem 0.625rem;
     border: 1px solid var(--border);
     border-radius: 6px;
+    background: var(--surface);
     font: inherit;
 }
 
-.form input:focus {
+.form input[type="file"] {
+    padding: 0.375rem;
+}
+
+.form textarea {
+    resize: vertical;
+}
+
+.form .short {
+    width: auto;
+    min-width: 6rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
     outline: 2px solid var(--accent);
     outline-offset: -1px;
+}
+
+.sides {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.side {
+    margin: 0;
+    padding: 0 1rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.side legend {
+    padding: 0 0.25rem;
+    font-weight: 600;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.row .grow {
+    flex: 1 1 12rem;
+}
+
+.row .button {
+    margin-top: 0;
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.buttons .button {
+    margin-top: 0;
+}
+
+.panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.panels h2,
+.inline-form h2 {
+    margin-top: 0;
+    font-size: 1.125rem;
+}
+
+.inline-form {
+    margin-top: 1.5rem;
+}
+
+.page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.page-head h1 {
+    margin: 0;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.filters select,
+.filters input {
+    padding: 0.4375rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font: inherit;
+}
+
+.filters .button {
+    margin-top: 0;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.table th a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.table .check {
+    width: 2rem;
+}
+
+.table .actions {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.table .actions form {
+    display: inline;
+}
+
+.table .actions > * + * {
+    margin-left: 0.75rem;
+}
+
+.table select {
+    margin-top: 0.25rem;
+    padding: 0.3125rem 0.375rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font: inherit;
+    font-weight: normal;
+}
+
+.table .sample {
+    max-width: 18rem;
+    white-space: pre-line;
+    font-size: 0.875rem;
+}
+
+.code {
+    padding: 0.5rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border-radius: 6px;
+    background: var(--bg);
+    font-size: 0.8125rem;
+}
+
+.summary {
+    padding-left: 1.25rem;
+}
+
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0;
+    list-style: none;
+}
+
+.pagination li > * {
+    display: block;
+    min-width: 2.25rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    text-align: center;
+    text-decoration: none;
+}
+
+.pagination .active > * {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+.pagination .disabled > * {
+    color: var(--muted);
 }
 
 .button {
@@ -115,6 +352,30 @@ h1 {
     font: inherit;
     font-weight: 600;
     cursor: pointer;
+}
+
+.button {
+    display: inline-block;
+    text-decoration: none;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.button.secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.button.danger {
+    background: var(--error);
+}
+
+.link-button.danger {
+    color: var(--error);
 }
 
 .link-button {
@@ -139,4 +400,16 @@ h1 {
     border-radius: 6px;
     background: #dafbe1;
     color: var(--ok);
+}
+
+.notice.warning {
+    border-color: #9a6700;
+    background: #fff8c5;
+    color: #7d4e00;
+}
+
+.notice.danger {
+    border-color: var(--error);
+    background: #ffebe9;
+    color: var(--error);
 }
