@@ -501,8 +501,7 @@ textarea:focus {
     text-decoration: line-through;
 }
 
-.study form .button,
-.study .next {
+.study form .button {
     margin-top: 1.25rem;
 }
 

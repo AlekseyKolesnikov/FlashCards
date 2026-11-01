@@ -26,9 +26,14 @@
             <p class="examples" lang="{{ $session->toLang->code }}">{{ $examples }}</p>
         @endif
 
-        {{-- Focused on load, so Enter moves on. --}}
-        <a href="{{ route('learn.show', $session) }}" class="button next" autofocus>
-            {{ $result['cards_left'] === 0 ? 'See results' : 'Next' }}
-        </a>
+        <div class="buttons">
+            {{-- Focused on load, so Enter moves on. --}}
+            <a href="{{ route('learn.show', $session) }}" class="button" autofocus>
+                {{ $result['cards_left'] === 0 ? 'See results' : 'Next' }}
+            </a>
+            @if (auth()->user()->isAdmin())
+                <a href="{{ route('admin.cards.edit', ['card' => $result['card_id'], 'session' => $session->id]) }}">Edit card</a>
+            @endif
+        </div>
     </div>
 @endsection

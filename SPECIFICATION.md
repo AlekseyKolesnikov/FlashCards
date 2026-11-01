@@ -12,11 +12,12 @@ Version 1 is web-only. It must run on PHP shared hosting and locally under XAMPP
 
 | Role | Can | Cannot |
 |---|---|---|
-| Admin | Manage languages and cards, import and export | Learn |
+| Admin | Manage languages and cards, import and export, and everything a learner can | — |
 | Learner | Learn, change own learning settings | Edit the vocabulary, see other learners' data |
 
 - There is one vocabulary. Learners see it only through learn mode.
-- Learners are isolated: each has their own progress, sessions and settings.
+- Learners are isolated: each has their own progress, sessions and settings. An admin who learns is treated as one more learner.
+- Admins learn so they can fix translations they find wrong while studying (§6.3). Letting other users edit cards comes later (§11).
 - Roles are checked on the server for every request, not only hidden in the UI.
 
 ## 3. Terms
@@ -154,6 +155,7 @@ The language B side is not sent to the browser before the answer is submitted.
 - On a correct answer: the stored word as well, so the learner sees its exact spelling.
 - The notes and examples in language B.
 - **Next** (Enter).
+- For an admin: **Edit card**. It opens the card form (§5.2), and saving or cancelling returns to this screen with the updated card.
 
 ### 6.4 Session end
 
@@ -348,6 +350,8 @@ Laravel's defaults cover most of this:
 - Typo tolerance and an "I was right" override
 - On-screen keyboard for special characters
 - Email, password reset, user management screens, account deletion
+- Edit rights for chosen learners (a per-user permission on top of the learner role), so others can fix translations
+- Learners reporting a wrong card, with a comment, for an admin to review
 - Registration limits and bot protection (decide before public release)
 - Statistics, layout optimized for mobile, text-to-speech
 - Offline use, local desktop build, mobile app

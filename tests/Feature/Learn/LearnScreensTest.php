@@ -153,4 +153,37 @@ class LearnScreensTest extends TestCase
             ->assertRedirect('/learn')
             ->assertSessionHas('warning', 'There are no cards to learn in this direction right now.');
     }
+
+    public function test_admin_can_edit_a_card_from_the_result_screen(): void
+    {
+        $this->actingAs($admin = User::factory()->admin()->create());
+        $session = $this->startStudy();
+        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => 'Hund']);
+        $editUrl = "/admin/cards/{$this->card->id}/edit?session={$session->id}";
+
+        $this->get("/learn/sessions/{$session->id}/result")->assertSee('Edit card')->assertSee($editUrl, false);
+        $this->get($editUrl)->assertOk();
+        $this->put("/admin/cards/{$this->card->id}", [
+            ...$this->card->only('lang1_id', 'word1', 'lang2_id', 'complexity'), 'word2' => 'Hund, der',
+        ])->assertRedirect("/learn/sessions/{$session->id}/result");
+
+        $this->get("/learn/sessions/{$session->id}/result")->assertSee('Hund, der');
+    }
+
+    public function test_learner_sees_no_edit_link(): void
+    {
+        $session = $this->startStudy();
+        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => 'Hund']);
+
+        $this->get("/learn/sessions/{$session->id}/result")->assertDontSee('Edit card');
+    }
+
+    public function test_edit_link_ignores_another_users_session(): void
+    {
+        $session = $this->startStudy();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get("/admin/cards/{$this->card->id}/edit?session={$session->id}");
+        $this->assertNull(session('cards.list_url'));
+    }
 }

@@ -8,13 +8,13 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Allows the request only for users with the given role, e.g. "role:admin".
+ * Allows the request only for users with one of the given roles, e.g. "role:admin" or "role:learner,admin".
  */
 class EnsureRole
 {
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        abort_unless($request->user()?->role === Role::from($role), 403);
+        abort_unless(in_array($request->user()?->role, array_map(Role::from(...), $roles), true), 403);
 
         return $next($request);
     }

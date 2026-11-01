@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach (['en' => 'English', 'de' => 'German', 'fr' => 'French', 'es' => 'Spanish', 'ru' => 'Russian'] as $code => $name) {
+        foreach (['en' => 'English', 'de' => 'German', 'pl' => 'Polish', 'ru' => 'Russian'] as $code => $name) {
             Language::firstOrCreate(['code' => $code], ['name' => $name]);
         }
 

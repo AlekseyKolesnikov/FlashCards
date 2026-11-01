@@ -22,10 +22,9 @@
                     <a href="{{ route('admin.cards.index') }}">Cards</a>
                     <a href="{{ route('admin.languages.index') }}">Languages</a>
                     <a href="{{ route('admin.import.index') }}">Import / export</a>
-                @else
-                    <a href="{{ route('learn.index') }}">Learn</a>
-                    <a href="{{ route('settings.edit') }}">Settings</a>
                 @endif
+                <a href="{{ route('learn.index') }}">Learn</a>
+                <a href="{{ route('settings.edit') }}">Settings</a>
             </nav>
 
             <form method="POST" action="{{ route('logout') }}" class="logout">

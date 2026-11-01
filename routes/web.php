@@ -47,7 +47,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('export', ExportController::class)->name('export');
 });
 
-Route::middleware(['auth', 'role:learner'])->group(function () {
+// Admins learn too, so they can fix cards they find wrong while studying.
+Route::middleware(['auth', 'role:learner,admin'])->group(function () {
     Route::get('/learn', [LearnController::class, 'index'])->name('learn.index');
     Route::post('/learn', [LearnController::class, 'start'])->name('learn.start');
     Route::get('/learn/sessions/{session}', [LearnController::class, 'show'])->name('learn.show');

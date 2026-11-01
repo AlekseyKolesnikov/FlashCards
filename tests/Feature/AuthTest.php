@@ -98,12 +98,15 @@ class AuthTest extends TestCase
         $this->get('/login')->assertDontSee('Register');
     }
 
-    public function test_roles_cannot_open_each_others_pages(): void
+    public function test_learners_cannot_open_admin_pages(): void
     {
         $this->actingAs(User::factory()->create())->get('/admin')->assertForbidden();
+    }
 
+    public function test_admins_can_learn(): void
+    {
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->get('/learn')->assertForbidden();
-        $this->actingAs($admin)->get('/settings')->assertForbidden();
+        $this->actingAs($admin)->get('/learn')->assertOk();
+        $this->actingAs($admin)->get('/settings')->assertOk();
     }
 }

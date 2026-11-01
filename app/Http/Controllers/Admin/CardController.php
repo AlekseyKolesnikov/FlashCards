@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CardRequest;
 use App\Models\Card;
 use App\Models\Language;
+use App\Models\StudySession;
 use App\Services\Vocabulary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -82,8 +83,14 @@ class CardController extends Controller
         return $this->backToList()->with('status', 'Card saved.');
     }
 
-    public function edit(Card $card): View
+    public function edit(Request $request, Card $card): View
     {
+        // Opened from the admin's own learn result screen: save and cancel return there.
+        $session = StudySession::find($request->integer('session'));
+        if ($session?->user_id === $request->user()->id) {
+            $request->session()->put('cards.list_url', route('learn.result', $session));
+        }
+
         return view('admin.cards.form', ['card' => $card, 'languages' => Language::orderBy('name')->get()]);
     }
 
