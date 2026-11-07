@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AccountValidationRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Learner settings (SPECIFICATION.md §9.2).
+ * Learner settings (SPECIFICATION.md §9.2) and password change (§9.1).
  */
 class SettingsController extends Controller
 {
+    use AccountValidationRules;
+
     public function edit(Request $request): View
     {
         return view('settings', ['user' => $request->user()]);
@@ -32,5 +35,19 @@ class SettingsController extends Controller
         $request->user()->update($data);
 
         return redirect()->route('settings.edit')->with('status', 'Settings saved.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => $this->passwordRules(),
+        ], [], [
+            'password' => 'new password',
+        ]);
+
+        $request->user()->update(['password' => $data['password']]);
+
+        return redirect()->route('settings.edit')->with('status', 'Password changed.');
     }
 }

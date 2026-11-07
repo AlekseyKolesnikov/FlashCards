@@ -34,6 +34,9 @@
             @endfor
         </select>
         <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Search words" aria-label="Search words">
+        <label class="filter-check">
+            <input type="checkbox" name="notes" value="1" @checked($filters['notes'])> Search notes
+        </label>
         <input type="hidden" name="sort" value="{{ $sort }}">
         <input type="hidden" name="dir" value="{{ $direction }}">
         <button type="submit" class="button secondary">Filter</button>
@@ -58,7 +61,7 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th class="check"><input type="checkbox" data-select-all="bulk-delete" aria-label="Select all"></th>
+                        <th class="check"><input type="checkbox" data-select-all="bulk" aria-label="Select all"></th>
                         <th>{!! $sortLink('lang1', 'Lang 1') !!}</th>
                         <th>{!! $sortLink('word1', 'Word 1') !!}</th>
                         <th>{!! $sortLink('lang2', 'Lang 2') !!}</th>
@@ -71,7 +74,7 @@
                     @foreach ($cards as $card)
                         <tr>
                             <td class="check">
-                                <input type="checkbox" name="ids[]" value="{{ $card->id }}" form="bulk-delete"
+                                <input type="checkbox" name="ids[]" value="{{ $card->id }}" form="bulk"
                                        aria-label="Select {{ $card->word1 }}">
                             </td>
                             <td title="{{ $card->lang1->name }}">{{ $card->lang1->code }}</td>
@@ -94,10 +97,18 @@
             </table>
         </div>
 
-        <form id="bulk-delete" method="POST" action="{{ route('admin.cards.destroy-many') }}" data-confirm-selected>
+        {{-- Both buttons act on the ticked rows; each button chooses the HTTP method. --}}
+        <form id="bulk" method="POST" action="{{ route('admin.cards.destroy-many') }}" class="filters" data-require-selected>
             @csrf
-            @method('DELETE')
-            <button type="submit" class="button danger">Delete selected</button>
+            <select name="complexity" aria-label="New complexity" required>
+                <option value="">Complexity</option>
+                @for ($i = config('flashcards.complexity.min'); $i <= config('flashcards.complexity.max'); $i++)
+                    <option value="{{ $i }}">{{ $i }}</option>
+                @endfor
+            </select>
+            <button type="submit" name="_method" value="PATCH" class="button secondary">Set complexity</button>
+            <button type="submit" name="_method" value="DELETE" class="button danger" formnovalidate
+                    data-confirm="Delete {count} selected card(s)? This cannot be undone.">Delete selected</button>
         </form>
 
         {{ $cards->links() }}

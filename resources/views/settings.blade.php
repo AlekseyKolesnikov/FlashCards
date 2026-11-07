@@ -29,4 +29,24 @@
 
         <button type="submit" class="button">Save</button>
     </form>
+
+    <form method="POST" action="{{ route('settings.password') }}" class="card form narrow inline-form">
+        @csrf
+        @method('PUT')
+        <h2>Change password</h2>
+
+        <label for="current_password">Current password</label>
+        <input id="current_password" name="current_password" type="password" required autocomplete="current-password">
+        @error('current_password') <p class="error">{{ $message }}</p> @enderror
+
+        <label for="password">New password</label>
+        <input id="password" name="password" type="password" required autocomplete="new-password" minlength="8">
+        <p class="hint">At least 8 characters.</p>
+        @error('password') <p class="error">{{ $message }}</p> @enderror
+
+        <label for="password_confirmation">Repeat new password</label>
+        <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password">
+
+        <button type="submit" class="button">Change password</button>
+    </form>
 @endsection

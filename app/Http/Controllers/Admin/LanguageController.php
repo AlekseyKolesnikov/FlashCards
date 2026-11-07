@@ -24,7 +24,34 @@ class LanguageController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.languages.index', ['languages' => $languages]);
+        return view('admin.languages.index', ['languages' => $languages] + $this->complexityStats());
+    }
+
+    /**
+     * Card counts per language and complexity. A card counts once for each of its two languages.
+     *
+     * @return array{complexities: list<int>, byLanguage: array<int, array<int, int>>, totals: array<int, int>}
+     */
+    private function complexityStats(): array
+    {
+        $side = fn (string $column) => Card::query()
+            ->selectRaw("{$column} as language_id, complexity, COUNT(*) as n")
+            ->groupBy($column, 'complexity');
+
+        $byLanguage = [];
+        foreach ($side('lang1_id')->unionAll($side('lang2_id'))->get() as $row) {
+            $byLanguage[$row->language_id][$row->complexity] = ($byLanguage[$row->language_id][$row->complexity] ?? 0) + $row->n;
+        }
+
+        $totals = Card::query()
+            ->selectRaw('complexity, COUNT(*) as n')
+            ->groupBy('complexity')
+            ->orderBy('complexity')
+            ->pluck('n', 'complexity')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
+        return ['complexities' => array_keys($totals), 'byLanguage' => $byLanguage, 'totals' => $totals];
     }
 
     public function store(Request $request): RedirectResponse

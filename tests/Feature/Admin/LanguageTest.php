@@ -77,4 +77,23 @@ class LanguageTest extends TestCase
         $this->assertNull(Language::find($de->id));
         $this->assertSame(0, StudySession::count());
     }
+
+    public function test_counts_words_per_language_and_complexity(): void
+    {
+        [$en, $de, $pl] = Language::factory()->count(3)->sequence(
+            ['code' => 'en', 'name' => 'English'], ['code' => 'de', 'name' => 'German'], ['code' => 'pl', 'name' => 'Polish'],
+        )->create();
+        Card::factory()->count(2)->create(['lang1_id' => $en->id, 'lang2_id' => $de->id, 'complexity' => 1]);
+        Card::factory()->create(['lang1_id' => $pl->id, 'lang2_id' => $en->id, 'complexity' => 3]);
+
+        $view = $this->actingAs($this->admin)->get('/admin/languages')
+            ->assertOk()
+            ->assertSee('Words by complexity')
+            ->viewData('byLanguage');
+
+        $this->assertSame([1 => 2, 3 => 1], array_map('intval', $view[$en->id]));
+        $this->assertSame([1 => 2], array_map('intval', $view[$de->id]));
+        $this->assertSame([3 => 1], array_map('intval', $view[$pl->id]));
+        $this->assertSame([1 => 2, 3 => 1], $this->get('/admin/languages')->viewData('totals'));
+    }
 }

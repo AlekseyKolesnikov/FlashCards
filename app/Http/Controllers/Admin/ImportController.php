@@ -139,7 +139,7 @@ class ImportController extends Controller
         return view('admin.import.preview', ['pending' => $pending, 'result' => $result]);
     }
 
-    public function store(): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $pending = $this->pending();
         if (! $pending) {
@@ -153,12 +153,18 @@ class ImportController extends Controller
             return $this->fail($e);
         }
 
-        $imported = $this->importer->import($result);
+        $update = $request->boolean('update');
+        $counts = $this->importer->import($result, $update);
         $this->clear();
 
+        $status = sprintf('Imported %d card(s)', $counts['imported']);
+        if ($update) {
+            $status .= sprintf(', updated %d existing card(s)', $counts['updated']);
+        }
+        $skipped = count($result->duplicates) + ($update ? 0 : count($result->updates));
+
         return redirect()->route('admin.cards.index')->with('status', sprintf(
-            'Imported %d card(s). Skipped %d duplicate(s) and %d row(s) with errors.',
-            $imported, count($result->duplicates), count($result->errors),
+            '%s. Skipped %d duplicate(s) and %d row(s) with errors.', $status, $skipped, count($result->errors),
         ));
     }
 

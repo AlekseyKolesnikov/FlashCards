@@ -13,7 +13,7 @@ Version 1 is web-only. It must run on PHP shared hosting and locally under XAMPP
 | Role | Can | Cannot |
 |---|---|---|
 | Admin | Manage languages and cards, import and export, and everything a learner can | — |
-| Learner | Learn, change own learning settings | Edit the vocabulary, see other learners' data |
+| Learner | Learn, change own learning settings and password | Edit the vocabulary, see other learners' data |
 
 - There is one vocabulary. Learners see it only through learn mode.
 - Learners are isolated: each has their own progress, sessions and settings. An admin who learns is treated as one more learner.
@@ -53,10 +53,11 @@ Notes and examples are shown as plain text with line breaks kept. No HTML or Mar
 
 - The admin manages a list of languages: a unique code (e.g. `de`) and a display name (e.g. "German").
 - A language can be deleted only when no card uses it.
+- The language page shows how many cards each language has per complexity, plus a row for all cards. A card counts for both of its languages. Each count in the all-cards row links to the card list filtered by that complexity.
 
 ### 4.3 Vocabulary rules
 
-1. **Duplicates.** Two cards are duplicates when they have the same two languages, in either order, and both words are equal after normalization (§7.1). A duplicate is rejected when saved and skipped on import.
+1. **Duplicates.** Two cards are duplicates when they have the same two languages, in either order, and both words are equal after normalization (§7.1). A duplicate is rejected when saved and skipped on import, unless the admin chooses to update existing cards from the file (§5.4).
 2. **Same word, different translation.** Two cards with the same word on one side but different translations are allowed, with a warning. The learner would see the same prompt with two different expected answers, so the notes or examples should tell them apart. Proper support comes with synonyms (§11).
 3. Editing words, notes, examples or complexity keeps learners' progress.
 4. Changing a card's languages resets all learners' progress for that card and removes it from open sessions. Swapping the two sides (same two languages) keeps progress.
@@ -66,9 +67,10 @@ Notes and examples are shown as plain text with line breaks kept. No HTML or Mar
 
 ### 5.1 Card list
 
-- Filter by language pair and complexity. Search in both words. Sort by any column. 50 cards per page.
+- Filter by language pair and complexity. Search in both words, and optionally (a checkbox) in both notes, which often hold alternative translations. Sort by any column. 50 cards per page.
 - Columns: language 1, word 1, language 2, word 2, complexity, edit, delete.
 - Select several rows and delete them, after a confirmation.
+- Select several rows, pick a complexity and set it for all of them. Learners keep their progress.
 
 ### 5.2 Add and edit a card
 
@@ -95,7 +97,8 @@ lang1,word1,notes1,examples1,lang2,word2,notes2,examples2,complexity
 **Import**
 1. The admin uploads a file. The app checks every row without saving anything.
 2. A preview shows how many rows will be imported, the duplicates that will be skipped, and the errors with their row numbers.
-3. After the admin confirms, the valid rows are saved in one transaction.
+3. Rows that match an existing card (§4.3) but give it a different complexity, notes or examples are listed separately, with each change. Only columns present in the file count, and an empty `complexity` leaves the existing value unchanged. Words are never changed: they identify the card.
+4. The admin confirms either "import" (new cards only; changed existing cards are skipped) or "import and update" (new cards plus the listed changes). Everything is saved in one transaction.
 
 The maximum file size is the host's PHP `upload_max_filesize`. Target: 10,000 rows.
 
@@ -262,6 +265,7 @@ With P = 2 (the default is 10):
 
 - **Registration**: anyone can create a learner account with a username (3–32 characters, unique, case-insensitive) and a password (at least 8 characters, typed twice). Registration can be turned off in configuration.
 - **Login and logout.** Passwords are stored as hashes.
+- **Password change**: any logged-in user can change their password on the Settings page. They type the current password once and the new one twice; the new one follows the registration rule.
 - **First admin**: created on a one-time install page (§10.3). Further admins are added directly in the database in v1.
 - There is no email, password reset or user management in v1.
 
@@ -370,3 +374,4 @@ These are accepted for v1 on purpose. They will be revisited once the app has be
 5. **Look-alike characters must match exactly.** A typographic apostrophe `’` is not the same as `'`. The same goes for the different dashes and quote marks. Text pasted from Word or exported from Anki often contains them.
 6. **Same prompt on two cards** (§4.3 rule 2) until synonyms are supported.
 7. **Default complexity is 5** when none is given in the form or on import. Not yet confirmed.
+8. **A password change does not log out other devices.** Login sessions opened elsewhere stay valid until they expire or log out.

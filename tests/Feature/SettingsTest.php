@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class SettingsTest extends TestCase
@@ -43,5 +44,36 @@ class SettingsTest extends TestCase
             ->assertSessionHasErrors(['session_size', 'postpone_sessions']);
 
         $this->assertNull($user->fresh()->session_size);
+    }
+
+    public function test_changes_password(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->put('/settings/password', [
+                'current_password' => 'password',
+                'password' => 'new-secret',
+                'password_confirmation' => 'new-secret',
+            ])
+            ->assertRedirect('/settings')
+            ->assertSessionHas('status');
+
+        $this->assertTrue(Hash::check('new-secret', $user->fresh()->password));
+    }
+
+    public function test_password_change_needs_current_password_and_valid_new_one(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->put('/settings/password', [
+                'current_password' => 'wrong',
+                'password' => 'short',
+                'password_confirmation' => 'different',
+            ])
+            ->assertSessionHasErrors(['current_password', 'password']);
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
     }
 }

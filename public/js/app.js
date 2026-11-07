@@ -1,10 +1,12 @@
 // Confirmation dialogs: <form data-confirm="Question?"> asks before submitting.
-// <form id="x" data-confirm-selected> asks about the checkboxes that belong to it (form="x").
+// A submit button's own data-confirm takes precedence over the form's.
+// <form id="x" data-require-selected> needs at least one ticked checkbox that belongs to it (form="x");
+// "{count}" in the question becomes the number of ticked checkboxes.
 document.addEventListener('submit', (event) => {
     const form = event.target;
-    let message = form.dataset.confirm;
+    let message = event.submitter?.dataset.confirm ?? form.dataset.confirm;
 
-    if (form.dataset.confirmSelected !== undefined) {
+    if (form.dataset.requireSelected !== undefined) {
         const count = document.querySelectorAll(`input[form="${form.id}"]:checked`).length;
 
         if (count === 0) {
@@ -13,7 +15,7 @@ document.addEventListener('submit', (event) => {
             return;
         }
 
-        message = `Delete ${count} selected card(s)? This cannot be undone.`;
+        message = message?.replace('{count}', count);
     }
 
     if (message && !confirm(message)) {

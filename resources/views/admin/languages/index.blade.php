@@ -44,6 +44,45 @@
         </div>
     @endif
 
+    @if ($complexities)
+        <h2>Words by complexity</h2>
+        <div class="table-wrap">
+            <table class="table stats">
+                <thead>
+                    <tr>
+                        <th>Language</th>
+                        @foreach ($complexities as $complexity)
+                            <th class="num">{{ $complexity }}</th>
+                        @endforeach
+                        <th class="num">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($languages as $language)
+                        @continue(! isset($byLanguage[$language->id]))
+                        <tr>
+                            <td>{{ $language->name }}</td>
+                            @foreach ($complexities as $complexity)
+                                <td class="num">{{ $byLanguage[$language->id][$complexity] ?? '' }}</td>
+                            @endforeach
+                            <td class="num">{{ array_sum($byLanguage[$language->id]) }}</td>
+                        </tr>
+                    @endforeach
+                    <tr class="total">
+                        <td>All cards</td>
+                        @foreach ($complexities as $complexity)
+                            <td class="num">
+                                <a href="{{ route('admin.cards.index', ['complexity' => $complexity]) }}">{{ $totals[$complexity] }}</a>
+                            </td>
+                        @endforeach
+                        <td class="num">{{ array_sum($totals) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="hint">Each card has two languages, so it is counted in both language rows.</p>
+    @endif
+
     <form method="POST" action="{{ route('admin.languages.store') }}" class="card form inline-form">
         @csrf
         <h2>Add a language</h2>

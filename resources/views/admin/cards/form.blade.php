@@ -55,12 +55,18 @@
             @endforeach
         </div>
 
-        <label for="complexity">Complexity</label>
-        <select id="complexity" name="complexity" required class="short">
-            @for ($i = config('flashcards.complexity.min'); $i <= config('flashcards.complexity.max'); $i++)
-                <option value="{{ $i }}" @selected((int) old('complexity', $card->complexity) === $i)>{{ $i }}</option>
-            @endfor
-        </select>
+        <fieldset class="choices">
+            <legend>Complexity</legend>
+            <div class="choice-row">
+                @for ($i = config('flashcards.complexity.min'); $i <= config('flashcards.complexity.max'); $i++)
+                    <label>
+                        <input type="radio" name="complexity" value="{{ $i }}" required
+                               @checked((int) old('complexity', $card->complexity) === $i)>
+                        <span>{{ $i }}</span>
+                    </label>
+                @endfor
+            </div>
+        </fieldset>
         <p class="hint">Lower values are learned first.</p>
         @error('complexity') <p class="error">{{ $message }}</p> @enderror
 

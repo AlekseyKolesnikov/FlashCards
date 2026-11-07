@@ -33,6 +33,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::redirect('/', '/admin/cards')->name('index');
 
     Route::delete('cards', [CardController::class, 'destroyMany'])->name('cards.destroy-many');
+    Route::patch('cards', [CardController::class, 'updateMany'])->name('cards.update-many');
     Route::resource('cards', CardController::class)->except('show');
     Route::resource('languages', LanguageController::class)->except('show', 'create');
 
@@ -56,4 +57,5 @@ Route::middleware(['auth', 'role:learner,admin'])->group(function () {
     Route::get('/learn/sessions/{session}/result', [LearnController::class, 'result'])->name('learn.result');
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::put('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 });

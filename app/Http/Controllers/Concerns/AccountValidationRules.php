@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Concerns;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * Validation rules shared by registration and the install page (SPECIFICATION.md §9.1).
+ * Validation rules shared by registration, the install page and password change (SPECIFICATION.md §9.1).
  */
 trait AccountValidationRules
 {
@@ -17,7 +17,15 @@ trait AccountValidationRules
         return [
             // Uniqueness is case-insensitive through the column's collation.
             'username' => ['required', 'string', 'min:3', 'max:32', 'alpha_dash', 'unique:users,username'],
-            'password' => ['required', 'string', 'confirmed', Password::min(8)],
+            'password' => $this->passwordRules(),
         ];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    protected function passwordRules(): array
+    {
+        return ['required', 'string', 'confirmed', Password::min(8)];
     }
 }

@@ -29,13 +29,16 @@ class CardController extends Controller
         $pair = $this->vocabulary->parsePairKey($request->query('pair'));
         $complexity = $request->integer('complexity') ?: null;
         $search = trim((string) $request->query('q'));
+        // Notes often hold alternative translations, so they can be searched too.
+        $searchNotes = $request->boolean('notes');
+        $searchColumns = $searchNotes ? ['word1', 'word2', 'notes1', 'notes2'] : ['word1', 'word2'];
 
         $query = Card::with('lang1', 'lang2')
             ->when($pair, fn (Builder $q) => $q->forLanguagePair(...$pair))
             ->when($complexity, fn (Builder $q) => $q->where('complexity', $complexity))
-            ->when($search !== '', function (Builder $q) use ($search) {
+            ->when($search !== '', function (Builder $q) use ($search, $searchColumns) {
                 $like = '%'.addcslashes($search, '%_\\').'%';
-                $q->where(fn (Builder $q) => $q->where('word1', 'like', $like)->orWhere('word2', 'like', $like));
+                $q->whereAny($searchColumns, 'like', $like);
             });
 
         if (in_array($sort, ['lang1', 'lang2'], true)) {
@@ -50,7 +53,7 @@ class CardController extends Controller
         return view('admin.cards.index', [
             'cards' => $query->orderBy('id', $direction)->paginate(50)->withQueryString(),
             'pairs' => $this->vocabulary->languagePairs(),
-            'filters' => ['pair' => $request->query('pair'), 'complexity' => $complexity, 'q' => $search],
+            'filters' => ['pair' => $request->query('pair'), 'complexity' => $complexity, 'q' => $search, 'notes' => $searchNotes],
             'sort' => $sort,
             'direction' => $direction,
         ]);
@@ -120,6 +123,23 @@ class CardController extends Controller
         $deleted = $this->vocabulary->delete($ids);
 
         return $this->backToList()->with('status', "Deleted {$deleted} card(s).");
+    }
+
+    public function updateMany(Request $request): RedirectResponse
+    {
+        $range = config('flashcards.complexity');
+        $data = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer'],
+            'complexity' => ['required', 'integer', "between:{$range['min']},{$range['max']}"],
+        ]);
+
+        // Learners keep their progress when complexity changes (§4.3 rule 3).
+        $cards = Card::whereKey($data['ids']);
+        $count = $cards->count();
+        $cards->update(['complexity' => $data['complexity']]);
+
+        return $this->backToList()->with('status', "Set complexity {$data['complexity']} for {$count} card(s).");
     }
 
     private function backToList(): RedirectResponse

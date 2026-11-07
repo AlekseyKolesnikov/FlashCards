@@ -72,6 +72,59 @@ class ImportExportTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles('imports'));
     }
 
+    public function test_import_can_update_existing_cards(): void
+    {
+        $dog = Card::factory()->create([
+            'lang1_id' => $this->de->id, 'word1' => 'der Hund', 'notes1' => 'animal', 'examples1' => 'Der Hund bellt.',
+            'lang2_id' => $this->en->id, 'word2' => 'dog', 'notes2' => null, 'complexity' => 5,
+        ]);
+        $cat = Card::factory()->create([
+            'lang1_id' => $this->en->id, 'word1' => 'cat', 'lang2_id' => $this->de->id, 'word2' => 'die Katze', 'complexity' => 7,
+        ]);
+
+        // Other language order than the saved dog card, and no examples column.
+        $csv = "lang1,word1,notes1,lang2,word2,notes2,complexity\n"
+            ."en,Dog,,de,der Hund,noun,2\n"         // complexity 5 → 2, notes1 animal → noun
+            ."en,dog,,de,der Hund,other,3\n"        // same card again: a plain duplicate
+            ."en,cat,{$cat->notes1},de,die Katze,{$cat->notes2},\n"  // empty complexity keeps 7: no change
+            ."en,mouse,,de,die Maus,,\n";
+
+        $this->uploadCsv($csv);
+        $this->get('/admin/import/preview')
+            ->assertOk()
+            ->assertSee('1</strong> existing card(s) differ', false)
+            ->assertSeeInOrder(['Changes to existing cards', 'der Hund', 'Dog', 'Complexity: 5 → 2', 'Notes 1: animal → noun'])
+            ->assertSee('Import 1 card(s) and update 1 existing card(s)');
+
+        // Plain import leaves existing cards alone.
+        $this->post('/admin/import')
+            ->assertSessionHas('status', 'Imported 1 card(s). Skipped 3 duplicate(s) and 0 row(s) with errors.');
+        $this->assertSame(5, $dog->fresh()->complexity);
+
+        Card::where('word1', 'mouse')->delete();
+        $this->uploadCsv($csv);
+        $this->post('/admin/import', ['update' => 1])
+            ->assertSessionHas('status', 'Imported 1 card(s), updated 1 existing card(s). Skipped 2 duplicate(s) and 0 row(s) with errors.');
+
+        $dog->refresh();
+        $this->assertSame([2, 'noun', null, 'Der Hund bellt.', 'der Hund', 'dog'], [$dog->complexity, $dog->notes1, $dog->notes2, $dog->examples1, $dog->word1, $dog->word2]);
+        $this->assertSame(7, $cat->fresh()->complexity);
+    }
+
+    public function test_line_break_style_is_not_a_change(): void
+    {
+        Card::factory()->create([
+            'lang1_id' => $this->en->id, 'word1' => 'dog', 'examples1' => "One.\r\nTwo.",
+            'lang2_id' => $this->de->id, 'word2' => 'der Hund', 'notes1' => null, 'notes2' => null, 'examples2' => null, 'complexity' => 4,
+        ]);
+
+        $this->uploadCsv("lang1,word1,examples1,lang2,word2,complexity\nen,dog,\"One.\nTwo.\",de,der Hund,4\n");
+
+        $this->get('/admin/import/preview')
+            ->assertDontSee('Changes to existing cards')
+            ->assertSee('<strong>1</strong> duplicate(s)', false);
+    }
+
     public function test_csv_import_rejects_bad_files(): void
     {
         $this->uploadCsv("lang1,word1,word2\nen,dog,der Hund\n");

@@ -75,6 +75,11 @@ class CardTest extends TestCase
         $this->get('/admin/cards?q=hund')->assertSee('der Hund')->assertDontSee('die Katze')->assertDontSee('chien');
         $this->get('/admin/cards?q=DOG')->assertSee('der Hund')->assertDontSee('die Katze');
 
+        // Notes are searched only when asked.
+        Card::where('word1', 'cat')->update(['notes2' => 'die Mieze']);
+        $this->get('/admin/cards?q=mieze')->assertDontSee('die Katze');
+        $this->get('/admin/cards?q=mieze&notes=1')->assertSee('die Katze')->assertDontSee('der Hund');
+
         $this->get('/admin/cards?sort=word2&dir=asc')->assertOk()->assertSeeInOrder(['der Hund', 'die Katze', 'hound']);
     }
 
@@ -213,6 +218,32 @@ class CardTest extends TestCase
             ->assertSessionHas('status', 'Deleted 2 card(s).');
 
         $this->assertSame(['mouse'], Card::pluck('word1')->all());
+    }
+
+    public function test_sets_complexity_of_selected_cards(): void
+    {
+        $dog = $this->card('dog', 'der Hund');
+        $cat = $this->card('cat', 'die Katze');
+        $mouse = $this->card('mouse', 'die Maus');
+
+        $this->actingAs($this->admin)
+            ->patch('/admin/cards', ['ids' => [$dog->id, $cat->id], 'complexity' => 2])
+            ->assertSessionHas('status', 'Set complexity 2 for 2 card(s).');
+
+        $this->assertSame(2, $dog->fresh()->complexity);
+        $this->assertSame(2, $cat->fresh()->complexity);
+        $this->assertSame($mouse->complexity, $mouse->fresh()->complexity);
+    }
+
+    public function test_setting_complexity_needs_a_valid_value(): void
+    {
+        $dog = $this->card('dog', 'der Hund');
+
+        $this->actingAs($this->admin)
+            ->patch('/admin/cards', ['ids' => [$dog->id], 'complexity' => 99])
+            ->assertSessionHasErrors('complexity');
+
+        $this->assertSame($dog->complexity, $dog->fresh()->complexity);
     }
 
     /**
