@@ -123,7 +123,7 @@ class ImportController extends Controller
         return redirect()->route('admin.import.preview');
     }
 
-    public function preview(): View|RedirectResponse
+    public function preview(Request $request): View|RedirectResponse
     {
         $pending = $this->pending();
         if (! $pending) {
@@ -131,7 +131,7 @@ class ImportController extends Controller
         }
 
         try {
-            $result = $this->importer->check($this->rows($pending));
+            $result = $this->importer->check($this->rows($pending), $this->replace($request));
         } catch (ImportException $e) {
             return $this->fail($e);
         }
@@ -148,7 +148,7 @@ class ImportController extends Controller
 
         try {
             // Checked again: the vocabulary may have changed since the preview.
-            $result = $this->importer->check($this->rows($pending));
+            $result = $this->importer->check($this->rows($pending), $this->replace($request));
         } catch (ImportException $e) {
             return $this->fail($e);
         }
@@ -158,6 +158,10 @@ class ImportController extends Controller
         $this->clear();
 
         $status = sprintf('Imported %d card(s)', $counts['imported']);
+        if ($counts['deleted']) {
+            $labels = array_map(fn (string $pair) => $result->pairs[$pair]['label'], array_keys($result->replaced));
+            $status = sprintf('Deleted %d existing card(s) of %s. %s', $counts['deleted'], implode(', ', $labels), $status);
+        }
         if ($update) {
             $status .= sprintf(', updated %d existing card(s)', $counts['updated']);
         }
@@ -173,6 +177,19 @@ class ImportController extends Controller
         $this->clear();
 
         return redirect()->route('admin.import.index')->with('status', 'Import cancelled.');
+    }
+
+    /**
+     * Language pair keys whose saved cards the admin wants replaced by the file's cards.
+     *
+     * @return list<string>
+     */
+    private function replace(Request $request): array
+    {
+        return array_values($request->validate([
+            'replace' => ['array'],
+            'replace.*' => ['string', 'regex:/^\d+-\d+$/'],
+        ])['replace'] ?? []);
     }
 
     /**

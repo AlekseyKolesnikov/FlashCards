@@ -31,6 +31,14 @@ class Vocabulary
     }
 
     /**
+     * A "3-7" key for a language pair, lower language ID first, whatever order they are given in.
+     */
+    public function pairKey(int $langA, int $langB): string
+    {
+        return min($langA, $langB).'-'.max($langA, $langB);
+    }
+
+    /**
      * The existing card that the given card data would duplicate, if any.
      *
      * @param  array{lang1_id: int, word1: string, lang2_id: int, word2: string}  $data
@@ -110,6 +118,19 @@ class Vocabulary
         return DB::transaction(function () use ($ids) {
             // Progress and session entries go with the card (cascading foreign keys).
             $deleted = Card::whereKey($ids)->delete();
+            $this->finishEmptySessions();
+
+            return $deleted;
+        });
+    }
+
+    /**
+     * Delete all cards of a language pair (in either order), together with learners' progress for them.
+     */
+    public function deleteLanguagePair(int $langA, int $langB): int
+    {
+        return DB::transaction(function () use ($langA, $langB) {
+            $deleted = Card::forLanguagePair($langA, $langB)->delete();
             $this->finishEmptySessions();
 
             return $deleted;

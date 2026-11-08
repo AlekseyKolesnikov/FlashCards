@@ -23,4 +23,15 @@ class ImportResult
 
     /** @var list<array{row: int, message: string}> */
     public array $errors = [];
+
+    /**
+     * Language pairs of the file's valid rows, keyed "3-7" (lower language ID first), with the
+     * number of cards already saved for each.
+     *
+     * @var array<string, array{label: string, saved: int}>
+     */
+    public array $pairs = [];
+
+    /** @var array<string, int> Pairs whose saved cards are deleted before importing, with the number of cards. */
+    public array $replaced = [];
 }

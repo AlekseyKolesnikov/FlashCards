@@ -8,6 +8,10 @@
         $rowLabel = $pending['format'] === 'anki' ? 'Note' : 'Row';
         $validCount = count($result->valid);
         $updateCount = count($result->updates);
+        $replaceable = array_filter($result->pairs, fn (array $pair) => $pair['saved'] > 0);
+        $deleteCount = array_sum($result->replaced);
+        $replacedLabels = implode(', ', array_map(fn (string $pair) => $result->pairs[$pair]['label'], array_keys($result->replaced)));
+        $confirm = $deleteCount ? "Delete {$deleteCount} existing card(s) of {$replacedLabels} and learners' progress for them? This cannot be undone." : null;
         $fieldNames = [
             'complexity' => 'Complexity',
             'notes1' => 'Notes 1', 'examples1' => 'Examples 1',
@@ -17,6 +21,13 @@
 
     <h1>Check import</h1>
     <p class="muted">{{ $pending['name'] }}</p>
+
+    @if ($deleteCount)
+        <p class="notice danger">
+            All <strong>{{ $deleteCount }}</strong> existing card(s) of {{ $replacedLabels }} will be deleted before importing,
+            together with learners' progress for them.
+        </p>
+    @endif
 
     <ul class="summary">
         <li><strong>{{ $validCount }}</strong> card(s) will be imported.</li>
@@ -28,13 +39,19 @@
     </ul>
 
     <div class="buttons">
-        <form method="POST" action="{{ route('admin.import.store') }}">
+        <form method="POST" action="{{ route('admin.import.store') }}" @if ($confirm) data-confirm="{{ $confirm }}" @endif>
             @csrf
+            @foreach (array_keys($result->replaced) as $pair)
+                <input type="hidden" name="replace[]" value="{{ $pair }}">
+            @endforeach
             <button type="submit" class="button" @disabled($validCount === 0)>Import {{ $validCount }} card(s)</button>
         </form>
         @if ($updateCount)
-            <form method="POST" action="{{ route('admin.import.store') }}">
+            <form method="POST" action="{{ route('admin.import.store') }}" @if ($confirm) data-confirm="{{ $confirm }}" @endif>
                 @csrf
+                @foreach (array_keys($result->replaced) as $pair)
+                    <input type="hidden" name="replace[]" value="{{ $pair }}">
+                @endforeach
                 <input type="hidden" name="update" value="1">
                 <button type="submit" class="button secondary">
                     {{ $validCount ? "Import {$validCount} card(s) and update" : 'Update' }} {{ $updateCount }} existing card(s)
@@ -50,6 +67,21 @@
             <button type="submit" class="link-button">Cancel</button>
         </form>
     </div>
+
+    @if ($replaceable)
+        <form method="GET" action="{{ route('admin.import.preview') }}" class="card form replace-pairs">
+            <h2>Replace existing cards</h2>
+            <p class="hint">For a clean re-import, delete all saved cards of a language pair first, so the file's cards
+                are imported as new. Learners lose their progress for the deleted cards.</p>
+            @foreach ($replaceable as $key => $pair)
+                <label class="check-option">
+                    <input type="checkbox" name="replace[]" value="{{ $key }}" @checked(isset($result->replaced[$key]))>
+                    Delete all {{ $pair['saved'] }} saved card(s) of {{ $pair['label'] }}
+                </label>
+            @endforeach
+            <button type="submit" class="button secondary">Check again</button>
+        </form>
+    @endif
 
     @if ($result->errors)
         <h2>Errors</h2>

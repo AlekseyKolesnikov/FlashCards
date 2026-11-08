@@ -17,18 +17,29 @@ class CardImporter
 
     /**
      * @param  array<int, array<string, string>>  $rows  Card fields (language codes) keyed by row number.
+     * @param  list<string>  $replace  Language pair keys whose saved cards will be deleted before importing,
+     *                                 so they count neither as duplicates nor as updates.
      */
-    public function check(array $rows): ImportResult
+    public function check(array $rows, array $replace = []): ImportResult
     {
         $result = new ImportResult;
-        $languages = Language::pluck('id', 'code')->mapWithKeys(fn ($id, $code) => [mb_strtolower($code) => $id]);
+        $codes = Language::pluck('code', 'id');
+        $languages = $codes->mapWithKeys(fn ($code, $id) => [mb_strtolower($code) => $id]);
         $complexity = config('flashcards.complexity');
+        $replace = array_flip($replace);
 
         // Duplicate key => the saved card, or true once a row of this file has claimed the key.
         $existing = [];
+        // Pair key => number of saved cards.
+        $saved = [];
         $columns = ['id', 'lang1_id', 'word1_norm', 'lang2_id', 'word2_norm', 'complexity', 'notes1', 'examples1', 'notes2', 'examples2'];
         foreach (Card::toBase()->get($columns) as $card) {
-            $existing[$this->vocabulary->duplicateKey((int) $card->lang1_id, $card->word1_norm, (int) $card->lang2_id, $card->word2_norm)] = $card;
+            $pair = $this->vocabulary->pairKey((int) $card->lang1_id, (int) $card->lang2_id);
+            $saved[$pair] = ($saved[$pair] ?? 0) + 1;
+
+            if (! isset($replace[$pair])) {
+                $existing[$this->vocabulary->duplicateKey((int) $card->lang1_id, $card->word1_norm, (int) $card->lang2_id, $card->word2_norm)] = $card;
+            }
         }
 
         foreach ($rows as $number => $row) {
@@ -81,6 +92,12 @@ class CardImporter
                 continue;
             }
 
+            $pair = $this->vocabulary->pairKey($card['lang1_id'], $card['lang2_id']);
+            $result->pairs[$pair] ??= [
+                'label' => $codes[min($card['lang1_id'], $card['lang2_id'])].' – '.$codes[max($card['lang1_id'], $card['lang2_id'])],
+                'saved' => $saved[$pair] ?? 0,
+            ];
+
             $card['word1_norm'] = $this->checker->normalize($card['word1']);
             $card['word2_norm'] = $this->checker->normalize($card['word2']);
             $key = $this->vocabulary->duplicateKey($card['lang1_id'], $card['word1_norm'], $card['lang2_id'], $card['word2_norm']);
@@ -109,6 +126,14 @@ class CardImporter
 
             $existing[$key] = true;
             $result->valid[] = $card;
+        }
+
+        uasort($result->pairs, fn (array $a, array $b) => strcmp($a['label'], $b['label']));
+        // Only pairs that are in the file and have saved cards are replaced.
+        foreach ($result->pairs as $pair => ['saved' => $count]) {
+            if (isset($replace[$pair]) && $count > 0) {
+                $result->replaced[$pair] = $count;
+            }
         }
 
         return $result;
@@ -163,15 +188,21 @@ class CardImporter
     }
 
     /**
-     * Save the valid cards and, if asked, the changes to existing cards, in one transaction.
+     * Delete the saved cards of the replaced language pairs, then save the valid cards and,
+     * if asked, the changes to existing cards, all in one transaction.
      *
-     * @return array{imported: int, updated: int}
+     * @return array{deleted: int, imported: int, updated: int}
      */
     public function import(ImportResult $result, bool $updateExisting = false): array
     {
         $now = now();
 
-        DB::transaction(function () use ($result, $now, $updateExisting) {
+        $deleted = DB::transaction(function () use ($result, $now, $updateExisting) {
+            $deleted = 0;
+            foreach (array_keys($result->replaced) as $pair) {
+                $deleted += $this->vocabulary->deleteLanguagePair(...$this->vocabulary->parsePairKey($pair));
+            }
+
             foreach (array_chunk($result->valid, 500) as $chunk) {
                 Card::insert(array_map(fn ($card) => $card + ['created_at' => $now, 'updated_at' => $now], $chunk));
             }
@@ -181,8 +212,10 @@ class CardImporter
                     Card::whereKey($update['id'])->update(array_map(fn (array $change) => $change[1], $update['changes']));
                 }
             }
+
+            return $deleted;
         });
 
-        return ['imported' => count($result->valid), 'updated' => $updateExisting ? count($result->updates) : 0];
+        return ['deleted' => $deleted, 'imported' => count($result->valid), 'updated' => $updateExisting ? count($result->updates) : 0];
     }
 }

@@ -98,7 +98,8 @@ lang1,word1,notes1,examples1,lang2,word2,notes2,examples2,complexity
 1. The admin uploads a file. The app checks every row without saving anything.
 2. A preview shows how many rows will be imported, the duplicates that will be skipped, and the errors with their row numbers.
 3. Rows that match an existing card (§4.3) but give it a different complexity, notes or examples are listed separately, with each change. Only columns present in the file count, and an empty `complexity` leaves the existing value unchanged. Words are never changed: they identify the card.
-4. The admin confirms either "import" (new cards only; changed existing cards are skipped) or "import and update" (new cards plus the listed changes). Everything is saved in one transaction.
+4. For a clean re-import, the admin can tick language pairs of the file that already have cards. The preview is checked again as if those pairs were empty, and warns how many cards will be deleted. On import, all cards of the ticked pairs (in either language order) are deleted first, together with learners' progress for them.
+5. The admin confirms either "import" (new cards only; changed existing cards are skipped) or "import and update" (new cards plus the listed changes). Everything, including the deletion, is saved in one transaction.
 
 The maximum file size is the host's PHP `upload_max_filesize`. Target: 10,000 rows.
 

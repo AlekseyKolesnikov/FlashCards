@@ -129,6 +129,22 @@ h1 {
     resize: vertical;
 }
 
+.form .check-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+}
+
+.form .check-option input {
+    width: auto;
+    margin: 0;
+}
+
+.replace-pairs {
+    margin-top: 1.5rem;
+}
+
 .form .short {
     width: auto;
     min-width: 6rem;
