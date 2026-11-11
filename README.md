@@ -15,6 +15,10 @@ loads the React app.
 The app works at the root of a domain or in a subfolder, e.g. `http://localhost/flashcards/`,
 without rebuilding.
 
+Created with Claude Code for internal use :)
+
+A set of Russian-Polish flashcards, which is periodically updated, can be found here https://blu-disc.net/download/flashcards-pl-ru.7z. It has not yet been fully cleaned (contains quite a few inaccuracies).
+
 ## Local setup (XAMPP on Windows)
 
 XAMPP's `php.ini` must have `extension=intl` and `extension=zip` enabled.
