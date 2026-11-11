@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, type LoaderFunctionArgs, useLoaderData, useLocation } from 'react-router';
 import { ApiError, api } from '../../api';
 import { requireUser } from '../../auth';
+import { useConfirm } from '../../components/ConfirmDialog';
 import type { Language, Message } from '../../types';
 import { FieldError, useApiForm, useGo, useTitle } from '../../ui';
 
@@ -30,13 +31,14 @@ export default function Languages() {
     const location = useLocation();
     const go = useGo();
     const [error, setError] = useState<string | null>(null);
+    const [confirm, confirmDialog] = useConfirm();
     const form = useApiForm(
         (data) => api.post<Message>('/admin/languages', Object.fromEntries(data)),
         ({ message }) => go(null, { notice: message }),
     );
 
     async function deleteLanguage(language: Language) {
-        if (!confirm(`Delete ${language.name}?`)) {
+        if (!(await confirm({ message: `Delete ${language.name}?`, confirmLabel: 'Delete', danger: true }))) {
             return;
         }
         try {
@@ -56,6 +58,7 @@ export default function Languages() {
         <>
             <h1>Languages</h1>
             {error && <p className="notice danger">{error}</p>}
+            {confirmDialog}
 
             {languages.length === 0 ? (
                 <p className="muted">No languages yet.</p>

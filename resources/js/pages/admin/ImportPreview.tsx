@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Form, Link, type LoaderFunctionArgs, Navigate, useLoaderData } from 'react-router';
 import { ApiError, api } from '../../api';
 import { requireUser } from '../../auth';
+import { useConfirm } from '../../components/ConfirmDialog';
 import type { Message } from '../../types';
 import { limit, useGo, useTitle } from '../../ui';
 import { cancelImport, loadImportStep } from './importState';
@@ -46,6 +47,7 @@ export default function ImportPreview() {
     const go = useGo();
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [confirm, confirmDialog] = useConfirm();
 
     if ('failed' in preview) {
         return <Navigate to="/admin/import" replace state={{ error: preview.failed }} />;
@@ -61,7 +63,14 @@ export default function ImportPreview() {
     const runImport = async (update: boolean) => {
         if (
             preview.delete_count > 0 &&
-            !confirm(`Delete ${preview.delete_count} existing card(s) of ${replacedLabels} and learners' progress for them? This cannot be undone.`)
+            !(await confirm({
+                message: <>
+                    Delete <b>{preview.delete_count}</b> existing card(s) of <b>{replacedLabels}</b> and learners' progress for them?<br/>
+                    This cannot be undone.
+                </>,
+                confirmLabel: 'Delete and import',
+                danger: true,
+            }))
         ) {
             return;
         }
@@ -88,6 +97,7 @@ export default function ImportPreview() {
             <h1>Check import</h1>
             <p className="muted">{preview.name}</p>
             {error && <p className="notice danger">{error}</p>}
+            {confirmDialog}
 
             {preview.delete_count > 0 && (
                 <p className="notice danger">

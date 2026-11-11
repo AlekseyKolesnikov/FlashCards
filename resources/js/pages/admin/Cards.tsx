@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Form, Link, type LoaderFunctionArgs, useLoaderData, useLocation, useSearchParams } from 'react-router';
 import { ApiError, api } from '../../api';
 import { requireUser } from '../../auth';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { config, range } from '../../config';
 import type { LanguagePair, Message } from '../../types';
 import { useGo, useTitle } from '../../ui';
@@ -42,6 +43,7 @@ export default function Cards() {
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [bulkComplexity, setBulkComplexity] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [confirm, confirmDialog] = useConfirm();
 
     // A new page or filter starts with nothing selected.
     useEffect(() => setSelected(new Set()), [list]);
@@ -90,13 +92,25 @@ export default function Cards() {
         }
     }
 
-    function deleteCard(card: CardRow) {
-        if (confirm(`Delete the card “${card.word1}” – “${card.word2}”? This cannot be undone.`)) {
+    async function deleteCard(card: CardRow) {
+        if (
+            await confirm({
+                message: <>
+                    Delete the card
+                    <br/>
+                    <b>{card.word1}</b> – <b>{card.word2}</b>?
+                    <br/>
+                    This cannot be undone.
+                </>,
+                confirmLabel: 'Delete',
+                danger: true,
+            })
+        ) {
             run(() => api.delete<Message>(`/admin/cards/${card.id}`));
         }
     }
 
-    function bulk(action: 'complexity' | 'delete') {
+    async function bulk(action: 'complexity' | 'delete') {
         const ids = [...selected];
         if (ids.length === 0) {
             alert('Select at least one card first.');
@@ -108,7 +122,17 @@ export default function Cards() {
                 return;
             }
             run(() => api.patch<Message>('/admin/cards', { ids, complexity: Number(bulkComplexity) }));
-        } else if (confirm(`Delete ${ids.length} selected card(s)? This cannot be undone.`)) {
+        } else if (
+            await confirm({
+                message: <>
+                    Delete <b>{ids.length}</b> selected card(s)?
+                    <br/>
+                    This cannot be undone.
+                </>,
+                confirmLabel: 'Delete',
+                danger: true
+            })
+        ) {
             run(() => api.delete<Message>('/admin/cards', { ids }));
         }
     }
@@ -165,6 +189,7 @@ export default function Cards() {
             </Form>
 
             {error && <p className="notice danger">{error}</p>}
+            {confirmDialog}
 
             {list.cards.length === 0 ? (
                 <p className="muted">

@@ -1,6 +1,6 @@
 // Small helpers shared by the screens.
 
-import { type FormEvent, useEffect, useState } from 'react';
+import { type SubmitEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ApiError, api } from './api';
 import { config } from './config';
@@ -37,14 +37,14 @@ export function useApiForm<T>(
     const [error, setError] = useState<ApiError | null>(null);
     const [busy, setBusy] = useState(false);
 
-    async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         if (busy) {
             return;
         }
 
         const form = event.currentTarget;
-        const submitter = (event.nativeEvent as SubmitEvent).submitter;
+        const submitter = event.nativeEvent.submitter;
         setBusy(true);
 
         try {

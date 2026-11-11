@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { SubmitEvent, useState } from 'react';
 import { Link, type LoaderFunctionArgs, useLoaderData, useRevalidator } from 'react-router';
 import { ApiError, api } from '../../api';
 import { requireUser, useUser } from '../../auth';
@@ -156,14 +156,14 @@ function QuestionView({
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    async function submit(event: FormEvent<HTMLFormElement>) {
+    async function submit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         // The button is disabled too; this also stops a second Enter (§6.6).
         if (busy) {
             return;
         }
 
-        const dontKnow = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('name') === 'dont_know';
+        const dontKnow = event.nativeEvent.submitter?.getAttribute('name') === 'dont_know';
         const answer = String(new FormData(event.currentTarget).get('answer') ?? '');
         setBusy(true);
 
