@@ -654,7 +654,7 @@ textarea:focus {
 
 /* Confirmation dialog (components/ConfirmDialog.tsx). The padding is on the form, so a click
    that lands on the <dialog> element itself is a click on the backdrop. */
-.dialog {
+.confirm-dialog {
     width: min(28rem, calc(100vw - 2rem));
     padding: 0;
     border: 1px solid var(--border);
@@ -663,15 +663,15 @@ textarea:focus {
     color: var(--text);
 }
 
-.dialog::backdrop {
+.confirm-dialog::backdrop {
     background: rgb(0 0 0 / 0.35);
 }
 
-.dialog form {
+.confirm-dialog form {
     padding: 1.5rem;
 }
 
-.dialog p {
+.confirm-dialog p {
     margin: 0;
 }
 

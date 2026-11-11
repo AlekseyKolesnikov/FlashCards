@@ -55,7 +55,7 @@ function ConfirmDialog({ message, confirmLabel = 'OK', danger = false, onClose }
     return (
         <dialog
             ref={dialog}
-            className="dialog"
+            className="confirm-dialog"
             // The buttons submit the method="dialog" form, which closes the dialog with the button's value.
             onClose={() => onClose(dialog.current?.returnValue === 'confirm')}
             // A click on the backdrop lands on the <dialog> itself.
