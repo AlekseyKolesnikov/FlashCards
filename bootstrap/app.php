@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(prepend: [\App\Http\Middleware\ScopeCookiesToAppFolder::class]);
 
+        // The browser sets the theme cookie (resources/js/theme.ts), so it is not encrypted.
+        $middleware->encryptCookies(except: ['theme']);
+
         // Full URLs, so the redirect stays inside the folder the app runs in.
         $middleware->redirectGuestsTo(fn () => url('/app/login'));
     })

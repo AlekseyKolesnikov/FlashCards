@@ -56,7 +56,7 @@ export default function UserMenu({ user }: { user: User }) {
     }
 
     return (
-        <div className="user-menu header-end" ref={menu}>
+        <div className="user-menu" ref={menu}>
             <button
                 ref={button}
                 type="button"

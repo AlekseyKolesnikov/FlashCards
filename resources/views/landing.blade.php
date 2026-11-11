@@ -1,6 +1,7 @@
 {{-- Public landing page (SPECIFICATION.md §10.2). All app screens are in the React app under /app. --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+{{-- The theme cookie is set by the button in the app's header (resources/js/theme.ts). --}}
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"@if (request()->cookie('theme') === 'dark') data-theme="dark"@endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

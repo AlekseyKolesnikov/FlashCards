@@ -1,6 +1,7 @@
 {{-- Loads the React app (resources/js). Everything it shows comes from the JSON API. --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+{{-- The theme cookie is set by the button in the app's header (resources/js/theme.ts). --}}
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"@if (request()->cookie('theme') === 'dark') data-theme="dark"@endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,6 +14,8 @@
             'landingUrl' => url('/'),
             'appPath' => parse_url(url('/app'), PHP_URL_PATH),
             'apiPath' => parse_url(url('/api'), PHP_URL_PATH),
+            // Same path as the login cookies, so the theme cookie reaches the landing page too.
+            'cookiePath' => config('session.path'),
             'registrationOpen' => (bool) config('flashcards.registration_open'),
             'complexity' => config('flashcards.complexity'),
             'sessionSize' => config('flashcards.session_size'),

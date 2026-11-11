@@ -13,6 +13,8 @@ export interface AppConfig {
     appPath: string;
     /** Path of the JSON API, e.g. "/flashcards/api". */
     apiPath: string;
+    /** Path of the login cookies, usually the folder the app is served from, e.g. "/flashcards". */
+    cookiePath: string;
     registrationOpen: boolean;
     complexity: Range;
     sessionSize: Range;

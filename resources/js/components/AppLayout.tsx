@@ -3,10 +3,11 @@ import { useUser } from '../auth';
 import { config } from '../config';
 import type { Notices } from '../types';
 import { NoticeList } from '../ui';
+import ThemeToggle from './ThemeToggle';
 import UserMenu from './UserMenu';
 
 /**
- * Header (SPECIFICATION.md §9.3) and the messages passed by the previous screen.
+ * Header (SPECIFICATION.md §9.3, with the theme button for guests too) and the messages passed by the previous screen.
  */
 export default function AppLayout() {
     const user = useUser();
@@ -29,20 +30,22 @@ export default function AppLayout() {
                 )}
 
                 {user && (
-                    <>
-                        <nav className="nav" aria-label="Main">
-                            {user.role === 'admin' && (
-                                <>
-                                    <NavLink to="/admin/cards">Cards</NavLink>
-                                    <NavLink to="/admin/languages">Languages</NavLink>
-                                    <NavLink to="/admin/import">Import / export</NavLink>
-                                </>
-                            )}
-                            <NavLink to="/learn">Learn</NavLink>
-                        </nav>
-                        <UserMenu user={user} />
-                    </>
+                    <nav className="nav" aria-label="Main">
+                        {user.role === 'admin' && (
+                            <>
+                                <NavLink to="/admin/cards">Cards</NavLink>
+                                <NavLink to="/admin/languages">Languages</NavLink>
+                                <NavLink to="/admin/import">Import / export</NavLink>
+                            </>
+                        )}
+                        <NavLink to="/learn">Learn</NavLink>
+                    </nav>
                 )}
+
+                <div className="header-end">
+                    <ThemeToggle />
+                    {user && <UserMenu user={user} />}
+                </div>
             </header>
 
             <main className="container">

@@ -35,6 +35,7 @@ class SubfolderTest extends TestCase
             ->assertOk()
             ->assertSee('"appPath":"\/flashcards\/app"', false)
             ->assertSee('"apiPath":"\/flashcards\/api"', false)
+            ->assertSee('"cookiePath":"\/flashcards"', false)
             ->assertSee('"landingUrl":'.json_encode($this->root().'/flashcards'), false);
     }
 

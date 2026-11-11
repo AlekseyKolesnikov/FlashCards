@@ -1,12 +1,45 @@
 :root {
+    color-scheme: light;
     --bg: #f7f7f5;
     --surface: #ffffff;
     --text: #1f2328;
     --muted: #656d76;
     --border: #d8dadd;
+    /* Links and focus rings. */
     --accent: #2f6feb;
+    /* Backgrounds under white text: buttons, chosen toggle boxes, the current page. */
+    --accent-fill: #2f6feb;
+    --danger-fill: #cf222e;
     --ok: #1a7f37;
+    --ok-bg: #dafbe1;
+    --warning: #7d4e00;
+    --warning-border: #9a6700;
+    --warning-bg: #fff8c5;
     --error: #cf222e;
+    --error-bg: #ffebe9;
+    --shadow: rgb(0 0 0 / 0.12);
+}
+
+/* Dark theme, chosen with the button in the header and kept in the "theme" cookie.
+   Laravel puts data-theme="dark" on <html>, so the page never shows in light first. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --surface: #161b22;
+    --text: #d8d8e4;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4090f0;
+    --accent-fill: #1058c0;
+    --danger-fill: #c02010;
+    --ok: #3fb950;
+    --ok-bg: #12261e;
+    --warning: #d29922;
+    --warning-border: #9e6a03;
+    --warning-bg: #272115;
+    --error: #f85149;
+    --error-bg: #2d1214;
+    --shadow: rgb(0 0 0 / 0.5);
 }
 
 * {
@@ -71,6 +104,9 @@ a {
 }
 
 .header-end {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     margin-left: auto;
 }
 
@@ -79,7 +115,8 @@ a {
     position: relative;
 }
 
-.user-menu-button {
+.user-menu-button,
+.theme-toggle {
     display: flex;
     align-items: center;
     gap: 0.375rem;
@@ -93,9 +130,16 @@ a {
 }
 
 .user-menu-button:hover,
-.user-menu-button[aria-expanded="true"] {
+.user-menu-button[aria-expanded="true"],
+.theme-toggle:hover {
     border-color: var(--border);
     background: var(--bg);
+}
+
+/* The icon box is one line of text high, so the button is as tall as the user menu button
+   and the header keeps its height after login. */
+.theme-toggle svg {
+    height: 1.5em;
 }
 
 .user-menu-list {
@@ -109,7 +153,7 @@ a {
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
-    box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
+    box-shadow: 0 6px 18px var(--shadow);
     list-style: none;
 }
 
@@ -237,6 +281,7 @@ h1 {
     border: 1px solid var(--border);
     border-radius: 5px;
     background: var(--surface);
+    color: inherit;
     font: inherit;
 }
 
@@ -314,8 +359,8 @@ h1 {
 }
 
 .choice-row input:checked + span {
-    border-color: var(--accent);
-    background: var(--accent);
+    border-color: var(--accent-fill);
+    background: var(--accent-fill);
     color: #fff;
     font-weight: 600;
 }
@@ -421,6 +466,7 @@ textarea:focus {
     border: 1px solid var(--border);
     border-radius: 5px;
     background: var(--surface);
+    color: inherit;
     font: inherit;
 }
 
@@ -497,6 +543,7 @@ textarea:focus {
     border: 1px solid var(--border);
     border-radius: 5px;
     background: var(--surface);
+    color: inherit;
     font: inherit;
     font-weight: normal;
 }
@@ -550,8 +597,8 @@ textarea:focus {
 }
 
 .pagination .active > * {
-    border-color: var(--accent);
-    background: var(--accent);
+    border-color: var(--accent-fill);
+    background: var(--accent-fill);
     color: #fff;
 }
 
@@ -564,7 +611,7 @@ textarea:focus {
     padding: 0.4rem 0.8rem;
     border: 0;
     border-radius: 5px;
-    background: var(--accent);
+    background: var(--accent-fill);
     color: #fff;
     font: inherit;
     font-weight: 600;
@@ -583,7 +630,7 @@ textarea:focus {
 }
 
 .button.danger:focus-visible {
-    outline-color: var(--error);
+    outline-color: var(--danger-fill);
 }
 
 .button:disabled {
@@ -598,7 +645,7 @@ textarea:focus {
 }
 
 .button.danger {
-    background: var(--error);
+    background: var(--danger-fill);
 }
 
 .link-button.danger {
@@ -649,7 +696,7 @@ textarea:focus {
     padding: 0.625rem 0.875rem;
     border: 1px solid var(--ok);
     border-radius: 5px;
-    background: #dafbe1;
+    background: var(--ok-bg);
     color: var(--ok);
 }
 
@@ -761,13 +808,13 @@ textarea:focus {
 }
 
 .notice.warning {
-    border-color: #9a6700;
-    background: #fff8c5;
-    color: #7d4e00;
+    border-color: var(--warning-border);
+    background: var(--warning-bg);
+    color: var(--warning);
 }
 
 .notice.danger {
     border-color: var(--error);
-    background: #ffebe9;
+    background: var(--error-bg);
     color: var(--error);
 }

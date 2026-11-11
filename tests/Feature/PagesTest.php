@@ -56,6 +56,16 @@ class PagesTest extends TestCase
         }
     }
 
+    public function test_dark_theme_cookie_applies_to_every_page(): void
+    {
+        foreach (['/', '/app/login'] as $url) {
+            $this->get($url)->assertOk()->assertDontSee('data-theme', false);
+            $this->withUnencryptedCookie('theme', 'dark')->get($url)->assertSee('<html lang="en" data-theme="dark">', false);
+            $this->withUnencryptedCookie('theme', 'light')->get($url)->assertDontSee('data-theme', false);
+            $this->withUnencryptedCookie('theme', '"><script>')->get($url)->assertDontSee('data-theme', false);
+        }
+    }
+
     public function test_old_screens_are_gone(): void
     {
         $this->get('/login')->assertNotFound();

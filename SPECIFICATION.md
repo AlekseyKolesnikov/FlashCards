@@ -296,6 +296,11 @@ Every screen of a logged-in user has a header with:
 - the app name, linking to the user's start page (admin: card list; learner: learn start page)
 - the main links: **Cards**, **Languages** and **Import / export** for admins, and **Learn** for everyone
 - on the right, the username. Clicking it opens a menu with **Settings** and **Log out**. The menu closes on a click outside it, on Escape, and after an item is chosen.
+- next to the username, a button that switches between the light and dark theme. Light is the default.
+
+Guests see the header too, on the login, registration and install screens, with only the app name and the theme button.
+
+The theme is kept in a cookie for the app's folder, so it also applies to the landing page and the login screen. Laravel reads the cookie and renders the page in the chosen theme, so it never shows in light first.
 
 ## 10. Technical design
 
@@ -436,3 +441,4 @@ These are accepted for v1 on purpose. They will be revisited once the app has be
 10. **Older accounts have no email address**, and nobody can add one in v1.
 11. **Reloading the result screen skips to the next question.** The result is kept in the browser only; the answer itself is saved.
 12. **The email links back to the address the request came from.** Behind a proxy that changes the host or scheme, `APP_URL` and Laravel's trusted proxies must be configured.
+13. **The theme is kept per device, not per account.** It does not follow the user to another browser, and it does not follow the system's dark mode. The landing page has no theme button; it uses the theme chosen in the app.
