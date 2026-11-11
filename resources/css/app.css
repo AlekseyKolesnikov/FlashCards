@@ -428,6 +428,11 @@ textarea:focus {
     margin-top: 0;
 }
 
+/* A message about the controls just above it, e.g. the bulk card actions. */
+.filters + .error {
+    margin: -0.5rem 0 1rem;
+}
+
 .filters .filter-check {
     display: flex;
     align-items: center;

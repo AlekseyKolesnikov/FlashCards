@@ -43,10 +43,14 @@ export default function Cards() {
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [bulkComplexity, setBulkComplexity] = useState('');
     const [error, setError] = useState<string | null>(null);
+    /** Shown next to the bulk buttons, which are below the table, far from the notice above it. */
+    const [bulkError, setBulkError] = useState<string | null>(null);
     const [confirm, confirmDialog] = useConfirm();
 
     // A new page or filter starts with nothing selected.
     useEffect(() => setSelected(new Set()), [list]);
+    // Ticking a card or choosing a complexity fixes what the message asked for.
+    useEffect(() => setBulkError(null), [selected, bulkComplexity]);
 
     const here = location.pathname + location.search;
     const sort = params.get('sort') ?? 'id';
@@ -113,12 +117,12 @@ export default function Cards() {
     async function bulk(action: 'complexity' | 'delete') {
         const ids = [...selected];
         if (ids.length === 0) {
-            alert('Select at least one card first.');
+            setBulkError('Select at least one card first.');
             return;
         }
         if (action === 'complexity') {
             if (!bulkComplexity) {
-                alert('Choose a complexity first.');
+                setBulkError('Choose a complexity first.');
                 return;
             }
             run(() => api.patch<Message>('/admin/cards', { ids, complexity: Number(bulkComplexity) }));
@@ -282,6 +286,11 @@ export default function Cards() {
                             Delete selected
                         </button>
                     </div>
+                    {bulkError && (
+                        <p className="error" role="alert">
+                            {bulkError}
+                        </p>
+                    )}
 
                     <Pagination page={list.page} lastPage={list.last_page} link={(page) => withParams({ page: String(page) })} />
                 </>
