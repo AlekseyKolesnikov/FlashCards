@@ -15,8 +15,9 @@ trait AccountValidationRules
     protected function accountRules(): array
     {
         return [
-            // Uniqueness is case-insensitive through the column's collation.
+            // Uniqueness is case-insensitive through the columns' collation.
             'username' => ['required', 'string', 'min:3', 'max:32', 'alpha_dash', 'unique:users,username'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => $this->passwordRules(),
         ];
     }

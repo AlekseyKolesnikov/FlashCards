@@ -99,6 +99,11 @@ return [
         ],
     ],
 
+    // Minutes an account activation link works (SPECIFICATION.md §9.1).
+    'verification' => [
+        'expire' => 24 * 60,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Password Confirmation Timeout

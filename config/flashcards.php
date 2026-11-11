@@ -1,6 +1,6 @@
 <?php
 
-// Application settings. See SPECIFICATION.md §9 and §10.3.
+// Application settings. See SPECIFICATION.md §9 and §10.5.
 
 return [
 

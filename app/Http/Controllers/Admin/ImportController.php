@@ -8,12 +8,13 @@ use App\Services\Import\AnkiReader;
 use App\Services\Import\CardImporter;
 use App\Services\Import\CsvReader;
 use App\Services\Import\ImportException;
+use App\Services\Import\ImportResult;
 use App\Services\Vocabulary;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 /**
  * CSV and Anki import (SPECIFICATION.md §5.4–5.5): upload, (map Anki columns,) preview, confirm.
@@ -23,30 +24,34 @@ class ImportController extends Controller
 {
     private const SESSION_KEY = 'import';
 
+    /** Rows listed per table in the preview; the counts cover all of them. */
+    private const PREVIEW_LIMIT = 200;
+
     public function __construct(
         private CsvReader $csv,
         private AnkiReader $anki,
         private CardImporter $importer,
     ) {}
 
-    public function index(Vocabulary $vocabulary): View
+    public function index(Vocabulary $vocabulary): JsonResponse
     {
-        return view('admin.import.index', [
-            'languages' => Language::orderBy('name')->get(),
+        return response()->json([
+            'languages' => Language::orderBy('name')->get(['id', 'code', 'name']),
             'pairs' => $vocabulary->languagePairs(),
+            'csv_columns' => CsvReader::COLUMNS,
         ]);
     }
 
-    public function uploadCsv(Request $request): RedirectResponse
+    public function uploadCsv(Request $request): JsonResponse
     {
         $request->validate(['file' => ['required', 'file', 'extensions:csv,txt', 'max:10240']]);
 
         $this->start($request, 'csv');
 
-        return redirect()->route('admin.import.preview');
+        return response()->json(['format' => 'csv']);
     }
 
-    public function uploadAnki(Request $request): RedirectResponse
+    public function uploadAnki(Request $request): JsonResponse
     {
         $complexity = config('flashcards.complexity');
 
@@ -64,15 +69,12 @@ class ImportController extends Controller
             'mapping' => null,
         ]);
 
-        return redirect()->route('admin.import.mapping');
+        return response()->json(['format' => 'anki']);
     }
 
-    public function mapping(): View|RedirectResponse
+    public function mapping(): JsonResponse
     {
-        $pending = $this->pending();
-        if (! $pending || $pending['format'] !== 'anki') {
-            return redirect()->route('admin.import.index');
-        }
+        $pending = $this->pending('anki');
 
         try {
             $file = $this->anki->read(Storage::path($pending['path']));
@@ -85,24 +87,22 @@ class ImportController extends Controller
             fn (array $fields) => array_map(fn (string $value) => $this->anki->fieldText($value, $file['html']), $fields),
             array_slice($file['records'], 0, 5),
         );
-        $columnCount = max(array_map('count', $sample));
 
-        return view('admin.import.mapping', [
-            'pending' => $pending,
+        return response()->json([
+            'name' => $pending['name'],
+            'lang1' => $pending['options']['lang1'],
+            'lang2' => $pending['options']['lang2'],
             'sample' => $sample,
-            'columnNames' => $file['columns'],
-            'columnCount' => $columnCount,
-            'mapping' => $pending['options']['mapping'] ?? [0 => 'word1', 1 => 'word2'],
+            'column_names' => $file['columns'],
+            'column_count' => max(array_map('count', $sample) ?: [0]),
+            'mapping' => $pending['options']['mapping'] ?? ['word1', 'word2'],
             'fields' => AnkiReader::FIELDS,
         ]);
     }
 
-    public function saveMapping(Request $request): RedirectResponse
+    public function saveMapping(Request $request): JsonResponse
     {
-        $pending = $this->pending();
-        if (! $pending || $pending['format'] !== 'anki') {
-            return redirect()->route('admin.import.index');
-        }
+        $pending = $this->pending('anki');
 
         $mapping = $request->validate([
             'mapping' => ['required', 'array'],
@@ -111,24 +111,21 @@ class ImportController extends Controller
 
         $used = array_values(array_filter($mapping, fn ($field) => $field !== 'ignore'));
         if (! in_array('word1', $used, true) || ! in_array('word2', $used, true)) {
-            return back()->withErrors(['mapping' => 'Choose a column for word 1 and for word 2.']);
+            throw ValidationException::withMessages(['mapping' => 'Choose a column for word 1 and for word 2.']);
         }
         if (count($used) !== count(array_unique($used))) {
-            return back()->withErrors(['mapping' => 'Each card field can be chosen for one column only.']);
+            throw ValidationException::withMessages(['mapping' => 'Each card field can be chosen for one column only.']);
         }
 
         $pending['options']['mapping'] = array_map('strval', $mapping);
         $request->session()->put(self::SESSION_KEY, $pending);
 
-        return redirect()->route('admin.import.preview');
+        return response()->json(['format' => 'anki']);
     }
 
-    public function preview(Request $request): View|RedirectResponse
+    public function preview(Request $request): JsonResponse
     {
         $pending = $this->pending();
-        if (! $pending) {
-            return redirect()->route('admin.import.index');
-        }
 
         try {
             $result = $this->importer->check($this->rows($pending), $this->replace($request));
@@ -136,15 +133,12 @@ class ImportController extends Controller
             return $this->fail($e);
         }
 
-        return view('admin.import.preview', ['pending' => $pending, 'result' => $result]);
+        return response()->json($this->previewData($pending, $result));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse
     {
         $pending = $this->pending();
-        if (! $pending) {
-            return redirect()->route('admin.import.index');
-        }
 
         try {
             // Checked again: the vocabulary may have changed since the preview.
@@ -167,16 +161,44 @@ class ImportController extends Controller
         }
         $skipped = count($result->duplicates) + ($update ? 0 : count($result->updates));
 
-        return redirect()->route('admin.cards.index')->with('status', sprintf(
+        return response()->json(['message' => sprintf(
             '%s. Skipped %d duplicate(s) and %d row(s) with errors.', $status, $skipped, count($result->errors),
-        ));
+        )]);
     }
 
-    public function cancel(): RedirectResponse
+    public function cancel(): JsonResponse
     {
         $this->clear();
 
-        return redirect()->route('admin.import.index')->with('status', 'Import cancelled.');
+        return response()->json(['message' => 'Import cancelled.']);
+    }
+
+    /**
+     * @param  array{format: string, name: string}  $pending
+     * @return array<string, mixed>
+     */
+    private function previewData(array $pending, ImportResult $result): array
+    {
+        $limit = fn (array $rows) => array_slice($rows, 0, self::PREVIEW_LIMIT);
+        $pairs = [];
+        foreach ($result->pairs as $key => $pair) {
+            $pairs[] = ['key' => $key] + $pair;
+        }
+
+        return [
+            'name' => $pending['name'],
+            'format' => $pending['format'],
+            'valid_count' => count($result->valid),
+            'errors' => $limit($result->errors),
+            'error_count' => count($result->errors),
+            'duplicates' => $limit($result->duplicates),
+            'duplicate_count' => count($result->duplicates),
+            'updates' => array_map(fn (array $update) => ['changes' => (object) $update['changes']] + $update, $limit($result->updates)),
+            'update_count' => count($result->updates),
+            'pairs' => $pairs,
+            'replaced' => array_keys($result->replaced),
+            'delete_count' => array_sum($result->replaced),
+        ];
     }
 
     /**
@@ -208,13 +230,18 @@ class ImportController extends Controller
     }
 
     /**
-     * @return array{format: string, path: string, name: string, options: array<string, mixed>}|null
+     * The import in progress. Answers 404 when there is none (or not of the given format).
+     *
+     * @return array{format: string, path: string, name: string, options: array<string, mixed>}
      */
-    private function pending(): ?array
+    private function pending(?string $format = null): array
     {
         $pending = session(self::SESSION_KEY);
 
-        return $pending && Storage::exists($pending['path']) ? $pending : null;
+        abort_unless($pending && Storage::exists($pending['path']) && (! $format || $pending['format'] === $format),
+            404, 'There is no import in progress.');
+
+        return $pending;
     }
 
     /**
@@ -237,11 +264,14 @@ class ImportController extends Controller
         return $this->anki->toRows($this->anki->read($path), $options['mapping'], $options['lang1'], $options['lang2'], $options['complexity']);
     }
 
-    private function fail(ImportException $e): RedirectResponse
+    /**
+     * A file that cannot be read ends the import.
+     */
+    private function fail(ImportException $e): JsonResponse
     {
         $this->clear();
 
-        return redirect()->route('admin.import.index')->with('error', $e->getMessage());
+        return response()->json(['message' => $e->getMessage()], 422);
     }
 
     private function clear(): void

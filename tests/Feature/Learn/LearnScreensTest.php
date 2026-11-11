@@ -8,10 +8,11 @@ use App\Models\LearnerCard;
 use App\Models\StudySession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * Learn mode screens (SPECIFICATION.md §6).
+ * Learn mode through the API (SPECIFICATION.md §6).
  */
 class LearnScreensTest extends TestCase
 {
@@ -41,52 +42,71 @@ class LearnScreensTest extends TestCase
 
     private function startStudy(): StudySession
     {
-        $this->post('/learn', ['from_lang_id' => $this->en->id, 'to_lang_id' => $this->de->id])->assertRedirect();
+        $this->postJson('/api/learn', ['from_lang_id' => $this->en->id, 'to_lang_id' => $this->de->id])->assertOk();
 
         return StudySession::sole();
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function answer(StudySession $session, array $data): TestResponse
+    {
+        return $this->postJson("/api/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, ...$data]);
+    }
+
     public function test_start_page_lists_both_directions_with_counts(): void
     {
-        $this->get('/learn')
+        $this->getJson('/api/learn')
             ->assertOk()
-            ->assertSee('English → German')
-            ->assertSee('German → English')
-            ->assertSeeInOrder(['1', 'new', '0', 'learning', '0', 'learned']);
+            ->assertJsonCount(2, 'directions')
+            ->assertJsonPath('directions.0.from.name', 'English')
+            ->assertJsonPath('directions.0.to.name', 'German')
+            ->assertJsonPath('directions.1.from.name', 'German')
+            ->assertJsonPath('directions.0.new', 1)
+            ->assertJsonPath('directions.0.active', 0)
+            ->assertJsonPath('directions.0.learned', 0)
+            ->assertJsonPath('directions.0.cards_left', null);
     }
 
-    public function test_question_shows_only_the_from_side(): void
+    public function test_start_resumes_the_open_session(): void
     {
         $session = $this->startStudy();
 
-        $this->get("/learn/sessions/{$session->id}")
-            ->assertOk()
-            ->assertSee('dog')
-            ->assertSee('animal')
-            ->assertSee('The dog barks.')
-            ->assertSee('1 card left')
-            ->assertDontSee('der Hund')
-            ->assertDontSee('male')
-            ->assertDontSee('Der Hund bellt.');
-
-        $this->get('/learn')->assertSee('Resume (1 left)');
+        $this->postJson('/api/learn', ['from_lang_id' => $this->en->id, 'to_lang_id' => $this->de->id])
+            ->assertJsonPath('session_id', $session->id);
+        $this->getJson('/api/learn')->assertJsonPath('directions.0.cards_left', 1);
     }
 
-    public function test_wrong_answer_shows_the_correct_answer(): void
+    public function test_question_contains_only_the_from_side(): void
     {
         $session = $this->startStudy();
 
-        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => 'Hund'])
-            ->assertRedirect("/learn/sessions/{$session->id}/result");
-
-        $this->get("/learn/sessions/{$session->id}/result")
+        $response = $this->getJson("/api/learn/sessions/{$session->id}")
             ->assertOk()
-            ->assertSee('Incorrect')
-            ->assertSee('Your answer:')
-            ->assertSee('Hund')
-            ->assertSee('der Hund')
-            ->assertSee('male')
-            ->assertSee('Der Hund bellt.');
+            ->assertJsonPath('session.open', true)
+            ->assertJsonPath('session.cards_left', 1)
+            ->assertJsonPath('session.to.name', 'German')
+            ->assertJsonPath('question', [
+                'card_id' => $this->card->id, 'word' => 'dog', 'notes' => 'animal', 'examples' => 'The dog barks.',
+            ]);
+
+        // Nothing of the other side reaches the browser before the answer (§6.2).
+        foreach (['der Hund', 'male', 'Der Hund bellt.'] as $hidden) {
+            $this->assertStringNotContainsString($hidden, $response->getContent());
+        }
+    }
+
+    public function test_wrong_answer_returns_the_correct_answer(): void
+    {
+        $session = $this->startStudy();
+
+        $this->answer($session, ['answer' => 'Hund'])
+            ->assertOk()
+            ->assertJsonPath('result', [
+                'card_id' => $this->card->id, 'typed' => 'Hund', 'correct' => false, 'cards_left' => 1,
+                'prompt' => 'dog', 'expected' => 'der Hund', 'notes' => 'male', 'examples' => 'Der Hund bellt.',
+            ]);
 
         $this->assertSame(2, LearnerCard::sole()->retry);
     }
@@ -94,20 +114,19 @@ class LearnScreensTest extends TestCase
     public function test_correct_answer_and_session_summary(): void
     {
         $session = $this->startStudy();
-        $answer = fn (array $data) => $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, ...$data]);
 
-        $answer(['dont_know' => '1']);
-        $this->get("/learn/sessions/{$session->id}/result")->assertSee('Not known')->assertDontSee('Your answer:');
+        $this->answer($session, ['dont_know' => true])->assertJsonPath('result.typed', null)->assertJsonPath('result.correct', false);
+        $this->answer($session, ['answer' => 'Der Hund.'])->assertJsonPath('result.correct', true)->assertJsonPath('result.cards_left', 0);
 
-        $answer(['answer' => 'Der Hund.']);
-        $this->get("/learn/sessions/{$session->id}/result")->assertSee('Correct')->assertSee('See results');
-
-        $this->get("/learn/sessions/{$session->id}")
+        $this->getJson("/api/learn/sessions/{$session->id}")
             ->assertOk()
-            ->assertSee('Session complete')
-            ->assertSeeInOrder(['0', 'of', '1'])
-            ->assertSeeInOrder(['dog', 'der Hund', '1'])
-            ->assertSee('Start next session');
+            ->assertJsonPath('session.open', false)
+            ->assertJsonMissingPath('question')
+            ->assertJsonPath('summary', [
+                'total' => 1,
+                'first_try' => 0,
+                'mistakes' => [['card_id' => $this->card->id, 'word' => 'dog', 'answer' => 'der Hund', 'wrong_count' => 1]],
+            ]);
     }
 
     public function test_repeated_submission_changes_nothing(): void
@@ -117,9 +136,9 @@ class LearnScreensTest extends TestCase
         $current = $session->currentEntry()->card;
         $payload = ['card_id' => $current->id, 'answer' => 'wrong'];
 
-        $this->post("/learn/sessions/{$session->id}/answer", $payload);
-        // The same card is now at the end of the queue, so the repeat is ignored.
-        $this->post("/learn/sessions/{$session->id}/answer", $payload)->assertRedirect("/learn/sessions/{$session->id}");
+        $this->postJson("/api/learn/sessions/{$session->id}/answer", $payload)->assertOk();
+        // The same card is now at the end of the queue, so the repeat is ignored (§6.6).
+        $this->postJson("/api/learn/sessions/{$session->id}/answer", $payload)->assertConflict();
 
         $this->assertSame(2, LearnerCard::where('card_id', $current->id)->value('retry'));
     }
@@ -128,8 +147,7 @@ class LearnScreensTest extends TestCase
     {
         $session = $this->startStudy();
 
-        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => ''])
-            ->assertSessionHasErrors('answer');
+        $this->answer($session, ['answer' => ''])->assertJsonValidationErrors('answer');
 
         $this->assertSame(1, LearnerCard::sole()->retry);
     }
@@ -138,52 +156,32 @@ class LearnScreensTest extends TestCase
     {
         $session = $this->startStudy();
 
-        $this->actingAs(User::factory()->create())
-            ->get("/learn/sessions/{$session->id}")
-            ->assertNotFound();
-        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => 'der Hund'])
-            ->assertNotFound();
+        $this->actingAs(User::factory()->create());
+        $this->getJson("/api/learn/sessions/{$session->id}")->assertNotFound();
+        $this->answer($session, ['answer' => 'der Hund'])->assertNotFound();
     }
 
     public function test_message_when_nothing_to_learn(): void
     {
         $fr = Language::factory()->create();
 
-        $this->post('/learn', ['from_lang_id' => $this->en->id, 'to_lang_id' => $fr->id])
-            ->assertRedirect('/learn')
-            ->assertSessionHas('warning', 'There are no cards to learn in this direction right now.');
+        $this->postJson('/api/learn', ['from_lang_id' => $this->en->id, 'to_lang_id' => $fr->id])
+            ->assertJsonValidationErrors(['direction' => 'There are no cards to learn in this direction right now.']);
     }
 
-    public function test_admin_can_edit_a_card_from_the_result_screen(): void
+    public function test_admin_can_edit_a_card_after_answering(): void
     {
-        $this->actingAs($admin = User::factory()->admin()->create());
+        $this->actingAs(User::factory()->admin()->create());
         $session = $this->startStudy();
-        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => 'Hund']);
-        $editUrl = "/admin/cards/{$this->card->id}/edit?session={$session->id}";
+        $this->answer($session, ['answer' => 'Hund'])->assertOk();
 
-        $this->get("/learn/sessions/{$session->id}/result")->assertSee('Edit card')->assertSee($editUrl, false);
-        $this->get($editUrl)->assertOk();
-        $this->put("/admin/cards/{$this->card->id}", [
+        // The card form over the result screen loads and saves the card (§6.3).
+        $this->getJson("/api/admin/cards/{$this->card->id}")->assertJsonPath('card.word2', 'der Hund');
+        $this->putJson("/api/admin/cards/{$this->card->id}", [
             ...$this->card->only('lang1_id', 'word1', 'lang2_id', 'complexity'), 'word2' => 'Hund, der',
-        ])->assertRedirect("/learn/sessions/{$session->id}/result");
+        ])->assertOk()->assertJsonPath('card.word2', 'Hund, der');
 
-        $this->get("/learn/sessions/{$session->id}/result")->assertSee('Hund, der');
-    }
-
-    public function test_learner_sees_no_edit_link(): void
-    {
-        $session = $this->startStudy();
-        $this->post("/learn/sessions/{$session->id}/answer", ['card_id' => $this->card->id, 'answer' => 'Hund']);
-
-        $this->get("/learn/sessions/{$session->id}/result")->assertDontSee('Edit card');
-    }
-
-    public function test_edit_link_ignores_another_users_session(): void
-    {
-        $session = $this->startStudy();
-        $admin = User::factory()->admin()->create();
-
-        $this->actingAs($admin)->get("/admin/cards/{$this->card->id}/edit?session={$session->id}");
-        $this->assertNull(session('cards.list_url'));
+        // Editing words keeps the session going.
+        $this->getJson("/api/learn/sessions/{$session->id}")->assertJsonPath('question.card_id', $this->card->id);
     }
 }

@@ -13,6 +13,13 @@ class InstallTest extends TestCase
 
     private const TOKEN = 'test-install-token';
 
+    private const ACCOUNT = [
+        'username' => 'boss',
+        'email' => 'boss@example.com',
+        'password' => 'secret123',
+        'password_confirmation' => 'secret123',
+    ];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -20,32 +27,25 @@ class InstallTest extends TestCase
         config(['flashcards.install_token' => self::TOKEN]);
     }
 
-    public function test_creates_the_first_admin(): void
+    public function test_creates_the_first_admin_already_activated(): void
     {
-        $this->get('/install?token='.self::TOKEN)->assertOk()->assertSee('Install');
+        $this->getJson('/api/install?token='.self::TOKEN)->assertOk();
 
-        $this->post('/install', [
-            'token' => self::TOKEN,
-            'username' => 'boss',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
-        ])->assertRedirect('/');
+        $this->postJson('/api/install', ['token' => self::TOKEN] + self::ACCOUNT)
+            ->assertCreated()
+            ->assertJsonPath('user.role', 'admin');
 
         $admin = User::where('username', 'boss')->firstOrFail();
         $this->assertSame(Role::Admin, $admin->role);
+        $this->assertTrue($admin->hasVerifiedEmail());
         $this->assertAuthenticatedAs($admin);
     }
 
     public function test_needs_the_right_token(): void
     {
-        $this->get('/install')->assertNotFound();
-        $this->get('/install?token=wrong')->assertNotFound();
-        $this->post('/install', [
-            'token' => 'wrong',
-            'username' => 'boss',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
-        ])->assertNotFound();
+        $this->getJson('/api/install')->assertNotFound();
+        $this->getJson('/api/install?token=wrong')->assertNotFound();
+        $this->postJson('/api/install', ['token' => 'wrong'] + self::ACCOUNT)->assertNotFound();
 
         $this->assertSame(0, User::count());
     }
@@ -54,13 +54,13 @@ class InstallTest extends TestCase
     {
         config(['flashcards.install_token' => null]);
 
-        $this->get('/install?token=')->assertNotFound();
+        $this->getJson('/api/install?token=')->assertNotFound();
     }
 
     public function test_is_gone_once_an_admin_exists(): void
     {
         User::factory()->admin()->create();
 
-        $this->get('/install?token='.self::TOKEN)->assertNotFound();
+        $this->getJson('/api/install?token='.self::TOKEN)->assertNotFound();
     }
 }

@@ -24,6 +24,30 @@ class Card extends Model
         'lang2_id', 'word2', 'notes2', 'examples2',
     ];
 
+    /**
+     * Numbers stay numbers after saving form input, e.g. in API responses.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'complexity' => 'integer',
+            'lang1_id' => 'integer',
+            'lang2_id' => 'integer',
+        ];
+    }
+
+    /**
+     * The card as the React app edits it.
+     *
+     * @return array<string, mixed>
+     */
+    public function toApi(): array
+    {
+        return $this->only('id', ...$this->fillable);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Card $card) {

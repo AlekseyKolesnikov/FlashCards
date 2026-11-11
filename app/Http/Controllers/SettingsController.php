@@ -3,23 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AccountValidationRules;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 /**
  * Learner settings (SPECIFICATION.md §9.2) and password change (§9.1).
+ * The current values come with the user from GET /api/user.
  */
 class SettingsController extends Controller
 {
     use AccountValidationRules;
 
-    public function edit(Request $request): View
-    {
-        return view('settings', ['user' => $request->user()]);
-    }
-
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request): JsonResponse
     {
         $size = config('flashcards.session_size');
         $postpone = config('flashcards.postpone_sessions');
@@ -34,10 +29,10 @@ class SettingsController extends Controller
 
         $request->user()->update($data);
 
-        return redirect()->route('settings.edit')->with('status', 'Settings saved.');
+        return response()->json(['user' => $request->user()->toApi(), 'message' => 'Settings saved.']);
     }
 
-    public function updatePassword(Request $request): RedirectResponse
+    public function updatePassword(Request $request): JsonResponse
     {
         $data = $request->validate([
             'current_password' => ['required', 'string', 'current_password'],
@@ -48,6 +43,6 @@ class SettingsController extends Controller
 
         $request->user()->update(['password' => $data['password']]);
 
-        return redirect()->route('settings.edit')->with('status', 'Password changed.');
+        return response()->json(['message' => 'Password changed.']);
     }
 }

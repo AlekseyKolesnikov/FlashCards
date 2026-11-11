@@ -143,7 +143,8 @@ return [
     |
     */
 
-    'path' => env('SESSION_PATH', '/'),
+    // Empty: the folder the app is served from (see AppServiceProvider).
+    'path' => env('SESSION_PATH'),
 
     /*
     |--------------------------------------------------------------------------

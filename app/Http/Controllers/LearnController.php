@@ -11,9 +11,9 @@ use App\Services\ProgressService;
 use App\Services\SessionBuilder;
 use App\Services\Vocabulary;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Learn mode (SPECIFICATION.md §6).
@@ -25,7 +25,7 @@ class LearnController extends Controller
     /**
      * Start page: every direction that has cards, with the learner's progress in it.
      */
-    public function index(Request $request, Vocabulary $vocabulary): View
+    public function index(Request $request, Vocabulary $vocabulary): JsonResponse
     {
         $user = $request->user();
         $languages = Language::all()->keyBy('id');
@@ -46,8 +46,8 @@ class LearnController extends Controller
                 $open = $this->builder->openSession($user, $from, $to);
 
                 $directions[] = [
-                    'from' => $languages[$from],
-                    'to' => $languages[$to],
+                    'from' => $this->language($languages[$from]),
+                    'to' => $this->language($languages[$to]),
                     'new' => $total - $stats->active - $stats->learned,
                     'active' => (int) $stats->active,
                     'learned' => (int) $stats->learned,
@@ -56,15 +56,15 @@ class LearnController extends Controller
             }
         }
 
-        usort($directions, fn ($x, $y) => [$x['from']->name, $x['to']->name] <=> [$y['from']->name, $y['to']->name]);
+        usort($directions, fn ($x, $y) => [$x['from']['name'], $x['to']['name']] <=> [$y['from']['name'], $y['to']['name']]);
 
-        return view('learn.index', ['directions' => $directions]);
+        return response()->json(['directions' => $directions]);
     }
 
     /**
      * Resume the open session of a direction, or build a new one.
      */
-    public function start(Request $request): RedirectResponse
+    public function start(Request $request): JsonResponse
     {
         $data = $request->validate([
             'from_lang_id' => ['required', 'integer', 'exists:languages,id'],
@@ -74,47 +74,64 @@ class LearnController extends Controller
         $session = $this->builder->start($request->user(), (int) $data['from_lang_id'], (int) $data['to_lang_id']);
 
         if (! $session) {
-            return redirect()->route('learn.index')
-                ->with('warning', 'There are no cards to learn in this direction right now.');
+            throw ValidationException::withMessages([
+                'direction' => 'There are no cards to learn in this direction right now.',
+            ]);
         }
 
-        return redirect()->route('learn.show', $session);
+        return response()->json(['session_id' => $session->id]);
     }
 
     /**
      * The current question, or the summary once the session is finished.
      */
-    public function show(Request $request, StudySession $session): View
+    public function show(Request $request, StudySession $session): JsonResponse
     {
         $this->authorizeSession($request->user(), $session);
         $session->load('fromLang', 'toLang');
 
+        $data = ['session' => [
+            'id' => $session->id,
+            'seq' => $session->seq,
+            'open' => $session->isOpen(),
+            'from' => $this->language($session->fromLang),
+            'to' => $this->language($session->toLang),
+            'cards_left' => $session->cardsLeft(),
+        ]];
+
         if (! $session->isOpen()) {
             $entries = $session->cards()->with('card')->get();
 
-            return view('learn.summary', [
-                'session' => $session,
+            $data['summary'] = [
                 'total' => $entries->count(),
-                'firstTry' => $entries->where('wrong_count', 0)->count(),
-                'mistakes' => $entries->where('wrong_count', '>', 0)->sortByDesc('wrong_count')->values(),
-            ]);
+                'first_try' => $entries->where('wrong_count', 0)->count(),
+                'mistakes' => $entries->where('wrong_count', '>', 0)->sortByDesc('wrong_count')->values()
+                    ->map(fn ($entry) => [
+                        'card_id' => $entry->card_id,
+                        'word' => $entry->card->sideField('word', $session->from_lang_id),
+                        'answer' => $entry->card->sideField('word', $session->to_lang_id),
+                        'wrong_count' => $entry->wrong_count,
+                    ]),
+            ];
+
+            return response()->json($data);
         }
 
         $card = $session->currentEntry()->card;
         $from = $session->from_lang_id;
 
         // Only the "from" side goes to the browser before the answer (§6.2).
-        return view('learn.question', [
-            'session' => $session,
-            'cardId' => $card->id,
+        $data['question'] = [
+            'card_id' => $card->id,
             'word' => $card->sideField('word', $from),
             'notes' => $card->sideField('notes', $from),
             'examples' => $card->sideField('examples', $from),
-            'cardsLeft' => $session->cardsLeft(),
-        ]);
+        ];
+
+        return response()->json($data);
     }
 
-    public function answer(Request $request, StudySession $session): RedirectResponse
+    public function answer(Request $request, StudySession $session): JsonResponse
     {
         $this->authorizeSession($request->user(), $session);
 
@@ -124,51 +141,31 @@ class LearnController extends Controller
             'dont_know' => ['nullable', 'boolean'],
         ]);
 
-        $dontKnow = $request->boolean('dont_know');
-        $typed = $dontKnow ? null : (string) ($data['answer'] ?? '');
+        $typed = $request->boolean('dont_know') ? null : (string) ($data['answer'] ?? '');
 
         if ($typed === '') {
-            return back()->withErrors(['answer' => 'Type your answer, or choose “I don’t know”.']);
+            throw ValidationException::withMessages(['answer' => 'Type your answer, or choose “I don’t know”.']);
         }
 
         $result = $this->progress->answer($session, (int) $data['card_id'], $typed);
 
-        // A refreshed or repeated submission changes nothing (§6.6).
+        // A repeated submission changes nothing (§6.6).
         if ($result === null) {
-            return redirect()->route('learn.show', $session);
+            return response()->json(['message' => 'This answer was already saved.'], 409);
         }
 
-        $request->session()->put($this->resultKey($session), [
-            'card_id' => (int) $data['card_id'],
+        $card = Card::find($data['card_id']);
+
+        return response()->json(['result' => [
+            'card_id' => $card->id,
             'typed' => $typed,
             'correct' => $result['correct'],
             'cards_left' => $result['cards_left'],
-        ]);
-
-        return redirect()->route('learn.result', $session);
-    }
-
-    public function result(Request $request, StudySession $session): View|RedirectResponse
-    {
-        $this->authorizeSession($request->user(), $session);
-
-        $result = $request->session()->get($this->resultKey($session));
-        $card = $result ? Card::find($result['card_id']) : null;
-
-        if (! $card) {
-            return redirect()->route('learn.show', $session);
-        }
-
-        $session->load('fromLang', 'toLang');
-
-        return view('learn.result', [
-            'session' => $session,
-            'result' => $result,
             'prompt' => $card->sideField('word', $session->from_lang_id),
             'expected' => $card->sideField('word', $session->to_lang_id),
             'notes' => $card->sideField('notes', $session->to_lang_id),
             'examples' => $card->sideField('examples', $session->to_lang_id),
-        ]);
+        ]]);
     }
 
     /**
@@ -179,8 +176,11 @@ class LearnController extends Controller
         abort_unless($session->user_id === $user->id, 404);
     }
 
-    private function resultKey(StudySession $session): string
+    /**
+     * @return array{id: int, code: string, name: string}
+     */
+    private function language(Language $language): array
     {
-        return "learn.result.{$session->id}";
+        return $language->only('id', 'code', 'name');
     }
 }

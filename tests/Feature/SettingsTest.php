@@ -16,10 +16,10 @@ class SettingsTest extends TestCase
         config(['flashcards.session_size.default' => 20, 'flashcards.postpone_sessions.default' => 10]);
 
         $this->actingAs(User::factory()->create())
-            ->get('/settings')
+            ->getJson('/api/user')
             ->assertOk()
-            ->assertSee('value="20"', false)
-            ->assertSee('value="10"', false);
+            ->assertJsonPath('user.session_size', 20)
+            ->assertJsonPath('user.postpone_sessions', 10);
     }
 
     public function test_saves_settings(): void
@@ -27,9 +27,10 @@ class SettingsTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->put('/settings', ['session_size' => 30, 'postpone_sessions' => 5])
-            ->assertRedirect('/settings')
-            ->assertSessionHas('status');
+            ->putJson('/api/settings', ['session_size' => 30, 'postpone_sessions' => 5])
+            ->assertOk()
+            ->assertJsonPath('user.session_size', 30)
+            ->assertJsonPath('message', 'Settings saved.');
 
         $this->assertSame(30, $user->fresh()->sessionSize());
         $this->assertSame(5, $user->fresh()->postponeSessions());
@@ -40,8 +41,8 @@ class SettingsTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->put('/settings', ['session_size' => 4, 'postpone_sessions' => 101])
-            ->assertSessionHasErrors(['session_size', 'postpone_sessions']);
+            ->putJson('/api/settings', ['session_size' => 4, 'postpone_sessions' => 101])
+            ->assertJsonValidationErrors(['session_size', 'postpone_sessions']);
 
         $this->assertNull($user->fresh()->session_size);
     }
@@ -51,13 +52,13 @@ class SettingsTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->put('/settings/password', [
+            ->putJson('/api/settings/password', [
                 'current_password' => 'password',
                 'password' => 'new-secret',
                 'password_confirmation' => 'new-secret',
             ])
-            ->assertRedirect('/settings')
-            ->assertSessionHas('status');
+            ->assertOk()
+            ->assertJsonPath('message', 'Password changed.');
 
         $this->assertTrue(Hash::check('new-secret', $user->fresh()->password));
     }
@@ -67,12 +68,12 @@ class SettingsTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->put('/settings/password', [
+            ->putJson('/api/settings/password', [
                 'current_password' => 'wrong',
                 'password' => 'short',
                 'password_confirmation' => 'different',
             ])
-            ->assertSessionHasErrors(['current_password', 'password']);
+            ->assertJsonValidationErrors(['current_password', 'password']);
 
         $this->assertTrue(Hash::check('password', $user->fresh()->password));
     }

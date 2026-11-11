@@ -1,0 +1,10 @@
+# Used only when the whole project is uploaded into a web folder (SPECIFICATION.md §10.5).
+# Every request goes into public/, so nothing else in the project can be downloaded.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>

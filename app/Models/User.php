@@ -3,22 +3,28 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+/**
+ * An account must be activated through its email address before it can log in (SPECIFICATION.md §9.1).
+ */
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable. Role is set explicitly, never from input.
+     * The attributes that are mass assignable. Role and activation are set explicitly, never from input.
      *
      * @var list<string>
      */
     protected $fillable = [
         'username',
+        'email',
         'password',
         'session_size',
         'postpone_sessions',
@@ -42,8 +48,26 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => Role::class,
+        ];
+    }
+
+    /**
+     * What the React app needs to know about the logged-in user.
+     *
+     * @return array<string, mixed>
+     */
+    public function toApi(): array
+    {
+        return [
+            'id' => $this->id,
+            'username' => $this->username,
+            'email' => $this->email,
+            'role' => $this->role->value,
+            'session_size' => $this->sessionSize(),
+            'postpone_sessions' => $this->postponeSessions(),
         ];
     }
 
