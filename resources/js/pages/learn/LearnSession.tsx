@@ -6,6 +6,7 @@ import { type CardSaved, type Language, sideField } from '../../types';
 import { plural, useTitle } from '../../ui';
 import { CardDialog } from '../admin/CardForm';
 import { useStartSession } from './LearnStart';
+import { ReportDialog } from './ReportDialog';
 
 interface SessionInfo {
     id: number;
@@ -65,6 +66,7 @@ export default function LearnSession() {
     const [result, setResult] = useState<AnswerResult | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [editing, setEditing] = useState(false);
+    const [reporting, setReporting] = useState(false);
     // Counts answers, so the answer field starts empty even when the same card comes again.
     const [round, setRound] = useState(0);
     const { session } = data;
@@ -110,6 +112,7 @@ export default function LearnSession() {
                     setNotice(null);
                 }}
                 onEdit={user?.role === 'admin' ? () => setEditing(true) : null}
+                onReport={() => setReporting(true)}
             />
         );
     } else if (revalidator.state !== 'idle') {
@@ -138,6 +141,9 @@ export default function LearnSession() {
             {notice && <p className="notice warning study">{notice}</p>}
             {content}
             {editing && result && <CardDialog cardId={result.card_id} onSaved={cardSaved} onClose={() => setEditing(false)} />}
+            {reporting && result && (
+                <ReportDialog sessionId={session.id} cardId={result.card_id} to={session.to} onSent={setNotice} onClose={() => setReporting(false)} />
+            )}
         </>
     );
 }
@@ -237,11 +243,13 @@ function ResultView({
     result,
     onNext,
     onEdit,
+    onReport,
 }: {
     session: SessionInfo;
     result: AnswerResult;
     onNext: () => void;
     onEdit: (() => void) | null;
+    onReport: () => void;
 }) {
     return (
         <div className="card study">
@@ -291,6 +299,9 @@ function ResultView({
                         Edit card
                     </button>
                 )}
+                <button type="button" className="link-button" onClick={onReport}>
+                    Report a mistake
+                </button>
             </div>
         </div>
     );

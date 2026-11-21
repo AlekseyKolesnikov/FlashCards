@@ -160,6 +160,7 @@ The language B side is not sent to the browser before the answer is submitted.
 - The notes and examples in language B.
 - **Next** (Enter).
 - For an admin: **Edit card**. It opens the card form (§5.2) over this screen. Saving shows the updated card here; cancelling closes the form.
+- For everyone: **Report a mistake**. It opens a form over this screen with **Correct translation** (in language B) and **Comment**. At least one of them is required; both may be given. Sending emails the report to the first admin (the admin with the lowest ID that has an email address). The email contains the learner's username, the direction, both words, the suggested translation and the comment, and a link to the card in the admin card form. Its Reply-To is the learner's email address. A learner can report only cards of their own session, at most 6 reports per minute. If the email cannot be sent, the form says so and stays open.
 
 ### 6.4 Session end
 
@@ -273,7 +274,7 @@ With P = 2 (the default is 10):
   3. Logging in to an account that is not activated fails with a message and a **Send the link again** button. The button sends the username and password just typed, which proves ownership without telling strangers which usernames exist. It is limited to 6 requests per minute.
   4. An expired or broken link shows the login page with a message. Logging in then offers a new link.
   5. Emails are sent while the request runs, because shared hosts have no queue worker. Locally they are written to the log file.
-- **Login and logout.** Login is by username; the email address is only used for activation in v1. Passwords are stored as hashes.
+- **Login and logout.** Login is by username; the email address is only used for activation and as the Reply-To of card reports (§6.3) in v1. Passwords are stored as hashes.
 - **Password change**: any logged-in user can change their password on the Settings page. They type the current password once and the new one twice; the new one follows the registration rule.
 - **First admin**: created on a one-time install page (§10.5) with a username, email and password. The install token proves ownership, so this account is activated at once. Further admins are added directly in the database in v1.
 - Accounts created before activation was introduced count as activated and may have no email address.
@@ -346,6 +347,7 @@ The theme is kept in a cookie for the app's folder, so it also applies to the la
   | 409 | A repeated answer (§6.6) |
   | 422 | Validation errors per field, shown next to the field |
   | 429 | Too many requests |
+  | 503 | An email could not be sent |
 
 - **The rule from §6.2 holds at the API.** The question response contains only the "from" side; the "to" side comes in the answer response.
 
@@ -419,7 +421,7 @@ Laravel's defaults cover most of this:
 - On-screen keyboard for special characters
 - Password reset, changing the email address, user management screens, account deletion
 - Edit rights for chosen learners (a per-user permission on top of the learner role), so others can fix translations
-- Learners reporting a wrong card, with a comment, for an admin to review
+- A list of reported cards inside the app; reports are only emailed in v1 (§6.3)
 - Registration limits and bot protection (decide before public release)
 - Statistics, layout optimized for mobile, text-to-speech
 - Offline use, local desktop build, mobile app
@@ -444,3 +446,4 @@ These are accepted for v1 on purpose. They will be revisited once the app has be
 11. **Reloading the result screen skips to the next question.** The result is kept in the browser only; the answer itself is saved.
 12. **The email links back to the address the request came from.** Behind a proxy that changes the host or scheme, `APP_URL` and Laravel's trusted proxies must be configured.
 13. **The theme is kept per device, not per account.** It does not follow the user to another browser, and it does not follow the system's dark mode. The landing page has no theme button; it uses the theme chosen in the app.
+14. **Card reports are not stored.** They exist only as emails to the first admin. Other admins do not get them, and nothing marks a card as reported or a report as handled. Reports can only be sent from the result screen, not from the session summary.

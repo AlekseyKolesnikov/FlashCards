@@ -211,6 +211,11 @@ a {
     background: rgb(0 0 0 / 0.4);
 }
 
+/* Report of a wrong card, over the learn result screen. */
+.report-dialog {
+    width: min(560px, calc(100% - 2rem));
+}
+
 .landing {
     max-width: 720px;
     padding-top: 3rem;

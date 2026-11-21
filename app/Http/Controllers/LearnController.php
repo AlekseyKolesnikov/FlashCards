@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
+use App\Mail\CardReported;
 use App\Models\Card;
 use App\Models\Language;
 use App\Models\LearnerCard;
@@ -13,7 +15,9 @@ use App\Services\Vocabulary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Learn mode (SPECIFICATION.md §6).
@@ -166,6 +170,52 @@ class LearnController extends Controller
             'notes' => $card->sideField('notes', $session->to_lang_id),
             'examples' => $card->sideField('examples', $session->to_lang_id),
         ]]);
+    }
+
+    /**
+     * Emails a learner's report of a wrong card to the first admin (§6.3). Only cards of the
+     * learner's own session can be reported, so the vocabulary is still seen only through learn mode.
+     */
+    public function report(Request $request, StudySession $session): JsonResponse
+    {
+        $this->authorizeSession($request->user(), $session);
+
+        $data = $request->validate([
+            'card_id' => ['required', 'integer'],
+            'correction' => ['nullable', 'string', 'max:255', 'required_without:comment'],
+            'comment' => ['nullable', 'string', 'max:2000', 'required_without:correction'],
+        ], [
+            'correction.required_without' => 'Give the correct translation, a comment, or both.',
+            'comment.required_without' => 'Give the correct translation, a comment, or both.',
+        ]);
+
+        abort_unless($session->cards()->where('card_id', $data['card_id'])->exists(), 404);
+
+        $admin = User::where('role', Role::Admin)->whereNotNull('email')->orderBy('id')->first();
+        $session->load('fromLang', 'toLang');
+
+        $mail = new CardReported(
+            $request->user(),
+            Card::findOrFail($data['card_id']),
+            $session->fromLang,
+            $session->toLang,
+            $data['correction'] ?? null,
+            $data['comment'] ?? null,
+            url("/app/admin/cards/{$data['card_id']}"),
+        );
+
+        // Sent during the request, because shared hosts have no queue worker (§9.1).
+        try {
+            if ($admin) {
+                Mail::to($admin)->send($mail);
+
+                return response()->json(['message' => 'Thank you. The report was sent to the admin.']);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['message' => 'The report could not be sent. Try again later.'], 503);
     }
 
     /**

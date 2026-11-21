@@ -48,6 +48,8 @@ Route::middleware(['auth', 'role:learner,admin'])->group(function () {
     Route::post('learn', [LearnController::class, 'start'])->name('learn.start');
     Route::get('learn/sessions/{session}', [LearnController::class, 'show'])->name('learn.show');
     Route::post('learn/sessions/{session}/answer', [LearnController::class, 'answer'])->name('learn.answer');
+    // Each report is an email, so the number per minute is limited.
+    Route::post('learn/sessions/{session}/report', [LearnController::class, 'report'])->middleware('throttle:6,1')->name('learn.report');
     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::put('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 });
