@@ -32,7 +32,7 @@ class ProgressService
             }
 
             $expected = $entry->card->sideField('word', $session->to_lang_id);
-            $correct = $typed !== null && $this->checker->matches($typed, $expected);
+            $correct = $typed !== null && $this->checker->matches($typed, $expected, $session->toLang?->code);
 
             $progress = LearnerCard::firstOrNew(
                 ['user_id' => $session->user_id, 'card_id' => $cardId, 'from_lang_id' => $session->from_lang_id],

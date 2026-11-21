@@ -42,4 +42,35 @@ class AnswerCheckerTest extends TestCase
     {
         $this->assertSame($correct, (new AnswerChecker)->matches($typed, $expected));
     }
+
+    /**
+     * Russian ё and е are interchangeable in answers, in both directions (§7.1).
+     *
+     * @return array<string, array{string, string, ?string, bool}>
+     */
+    public static function yoAnswers(): array
+    {
+        return [
+            'е typed for stored ё' => ['ёлка', 'елка', 'ru', true],
+            'ё typed for stored е' => ['все', 'всё', 'ru', true],
+            'capital Ё typed for stored е' => ['ель', 'Ёль', 'ru', true],
+            'language code case ignored' => ['ёж', 'еж', 'RU', true],
+            'other letters still compared' => ['ёлка', 'ёлки', 'ru', false],
+            'not for other languages' => ['ёлка', 'елка', 'uk', false],
+            'not without a language' => ['ёлка', 'елка', null, false],
+        ];
+    }
+
+    #[DataProvider('yoAnswers')]
+    public function test_russian_yo(string $expected, string $typed, ?string $lang, bool $correct): void
+    {
+        $this->assertSame($correct, (new AnswerChecker)->matches($typed, $expected, $lang));
+    }
+
+    public function test_yo_still_distinguishes_duplicates(): void
+    {
+        $checker = new AnswerChecker;
+
+        $this->assertNotSame($checker->normalize('всё'), $checker->normalize('все'));
+    }
 }

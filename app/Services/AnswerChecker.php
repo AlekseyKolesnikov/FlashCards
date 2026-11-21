@@ -23,8 +23,21 @@ class AnswerChecker
         return trim(preg_replace('/[\s\p{Z}]+/u', ' ', $text), ' ');
     }
 
-    public function matches(string $typed, string $expected): bool
+    /**
+     * $lang is the code of the answer's language. In Russian, ё and е count as
+     * the same letter in either direction (§7.1). This is not part of normalize(),
+     * so the duplicate check still tells все and всё apart.
+     */
+    public function matches(string $typed, string $expected, ?string $lang = null): bool
     {
-        return $this->normalize($typed) === $this->normalize($expected);
+        $typed = $this->normalize($typed);
+        $expected = $this->normalize($expected);
+
+        if ($lang !== null && strtolower($lang) === 'ru') {
+            $typed = str_replace('ё', 'е', $typed);
+            $expected = str_replace('ё', 'е', $expected);
+        }
+
+        return $typed === $expected;
     }
 }

@@ -185,6 +185,8 @@ Both the typed answer and the stored word go through these steps before comparis
 3. Remove dots (`.`) and commas (`,`).
 4. Trim, and collapse any run of whitespace (including non-breaking spaces) into one space.
 
+When the answer's language has the code `ru`, ё and е then count as the same letter, in either direction: a stored "ёлка" accepts "елка", and a stored "все" accepts "всё". This step applies only to answers, not to the duplicate check (§4.3), so "все" and "всё" remain separate cards.
+
 The answer is correct when the two results are equal. Everything else must match the stored word exactly: accents, articles, the English "to", spelling variants, other punctuation (`'` `-` `!` `?` and so on) and typos.
 
 ### 7.2 Examples (also used as unit tests)
