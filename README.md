@@ -18,6 +18,7 @@ without rebuilding.
 Created with Claude Code for internal use :)
 
 A set of Russian-Polish flashcards, which is periodically updated, can be found here https://blu-disc.net/download/flashcards-pl-ru.7z. It has not yet been fully cleaned (contains quite a few inaccuracies).
+A test version of the application is available at flashcards.blu-disc.net.
 
 ## Local setup (XAMPP on Windows)
 
