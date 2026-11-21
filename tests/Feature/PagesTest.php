@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Card;
+use App\Models\Language;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -43,6 +45,26 @@ class PagesTest extends TestCase
             ->get('/')
             ->assertSee('Open the app')
             ->assertDontSee('/app/login');
+    }
+
+    public function test_landing_page_shows_how_many_words_each_pair_has(): void
+    {
+        $this->get('/')->assertOk()->assertDontSee('Words to learn');
+
+        $pl = Language::factory()->create(['name' => 'Polish']);
+        $ru = Language::factory()->create(['name' => 'Russian']);
+        $de = Language::factory()->create(['name' => 'German']);
+        Card::factory()->count(2)->create(['lang1_id' => $ru->id, 'lang2_id' => $pl->id]);
+        Card::factory()->create(['lang1_id' => $pl->id, 'lang2_id' => $ru->id]);
+        Card::factory()->create(['lang1_id' => $pl->id, 'lang2_id' => $de->id]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Words to learn')
+            ->assertSeeInOrder([
+                'German – Polish: <strong>1</strong> word<',
+                'Polish – Russian: <strong>3</strong> words<',
+            ], false);
     }
 
     public function test_every_app_url_loads_the_react_app(): void

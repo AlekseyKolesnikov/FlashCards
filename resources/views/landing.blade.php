@@ -34,6 +34,15 @@
             <li><strong>Both directions.</strong> Learn every language pair from either side.</li>
         </ul>
 
+        @if ($pairs)
+            <h2>Words to learn</h2>
+            <ul class="pair-sizes">
+                @foreach ($pairs as $pair)
+                    <li>{{ $pair['label'] }}: <strong>{{ number_format($pair['cards']) }}</strong> {{ Str::plural('word', $pair['cards']) }}</li>
+                @endforeach
+            </ul>
+        @endif
+
         <div class="buttons">
             @auth
                 <a href="{{ url('/app') }}" class="button">Open the app</a>

@@ -172,6 +172,32 @@ class Vocabulary
     }
 
     /**
+     * How many cards each language pair has, for the landing page. Language names are in
+     * alphabetical order within a pair, and the pairs are sorted by them.
+     *
+     * @return list<array{label: string, cards: int}>
+     */
+    public function pairSizes(): array
+    {
+        $names = Language::pluck('name', 'id');
+
+        return Card::query()
+            ->selectRaw('LEAST(lang1_id, lang2_id) AS a, GREATEST(lang1_id, lang2_id) AS b, COUNT(*) AS cards')
+            ->groupByRaw('LEAST(lang1_id, lang2_id), GREATEST(lang1_id, lang2_id)')
+            ->toBase()
+            ->get()
+            ->map(function ($pair) use ($names) {
+                $pairNames = [$names[$pair->a], $names[$pair->b]];
+                sort($pairNames, SORT_NATURAL | SORT_FLAG_CASE);
+
+                return ['label' => implode(' – ', $pairNames), 'cards' => (int) $pair->cards];
+            })
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Parse a "3-7" language pair key.
      *
      * @return array{int, int}|null

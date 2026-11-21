@@ -321,7 +321,7 @@ The theme is kept in a cookie for the app's folder, so it also applies to the la
 
 | Path | What |
 |---|---|
-| `/` | Landing page, rendered by Laravel: what the app does, and links to log in and register (or to open the app when logged in) |
+| `/` | Landing page, rendered by Laravel: what the app does, how many words each language pair has, and links to log in and register (or to open the app when logged in) |
 | `/app/…` | The React app: every screen, including login, registration and the install page |
 | `/api/…` | The JSON API used by the React app |
 | `/api/email/verify/…` | The activation link from the email. It redirects to the app's login page |
