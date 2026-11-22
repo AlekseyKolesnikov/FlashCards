@@ -142,6 +142,16 @@ a {
     height: 1.5em;
 }
 
+/* The landing page renders both icons; the button shows the theme it switches to. */
+.theme-toggle .icon-sun,
+:root[data-theme="dark"] .theme-toggle .icon-moon {
+    display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .icon-sun {
+    display: block;
+}
+
 .user-menu-list {
     position: absolute;
     top: calc(100% + 0.25rem);

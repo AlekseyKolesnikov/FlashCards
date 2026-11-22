@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { config } from '../config';
 import { getTheme, setTheme, type Theme } from '../theme';
 
 /** Header button that switches between the light and dark theme. It shows the theme it switches to. */
@@ -8,7 +9,7 @@ export default function ThemeToggle() {
     const label = `Switch to ${next} theme`;
 
     function toggle() {
-        setTheme(next);
+        setTheme(next, config.cookiePath);
         setState(next);
     }
 

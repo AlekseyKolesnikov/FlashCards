@@ -49,7 +49,7 @@ class PagesTest extends TestCase
 
     public function test_landing_page_shows_how_many_words_each_pair_has(): void
     {
-        $this->get('/')->assertOk()->assertDontSee('Words to learn');
+        $this->get('/')->assertOk()->assertDontSee('Available words to learn');
 
         $pl = Language::factory()->create(['name' => 'Polish']);
         $ru = Language::factory()->create(['name' => 'Russian']);
@@ -60,7 +60,7 @@ class PagesTest extends TestCase
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('Words to learn')
+            ->assertSee('Available words to learn')
             ->assertSeeInOrder([
                 'German – Polish: <strong>1</strong> word<',
                 'Polish – Russian: <strong>3</strong> words<',
@@ -86,6 +86,12 @@ class PagesTest extends TestCase
             $this->withUnencryptedCookie('theme', 'light')->get($url)->assertDontSee('data-theme', false);
             $this->withUnencryptedCookie('theme', '"><script>')->get($url)->assertDontSee('data-theme', false);
         }
+    }
+
+    public function test_landing_page_has_a_theme_button(): void
+    {
+        $this->get('/')->assertSee('aria-label="Switch to dark theme"', false)->assertSee('data-cookie-path="/"', false);
+        $this->withUnencryptedCookie('theme', 'dark')->get('/')->assertSee('aria-label="Switch to light theme"', false);
     }
 
     public function test_old_screens_are_gone(): void

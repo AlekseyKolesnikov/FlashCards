@@ -8,7 +8,7 @@ export default defineConfig(({ command }) => ({
     base: command === 'build' ? './' : undefined,
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/main.tsx'],
+            input: ['resources/css/app.css', 'resources/js/main.tsx', 'resources/js/landing.ts'],
             refresh: true,
         }),
         react(),

@@ -303,7 +303,7 @@ Every screen of a logged-in user has a header with:
 
 Guests see the header too, on the login, registration and install screens, with only the app name and the theme button.
 
-The theme is kept in a cookie for the app's folder, so it also applies to the landing page and the login screen. Laravel reads the cookie and renders the page in the chosen theme, so it never shows in light first.
+The landing page has the same theme button in its header. The theme is kept in a cookie for the app's folder, so it applies to the landing page and the app alike. Laravel reads the cookie and renders the page in the chosen theme, so it never shows in light first.
 
 ## 10. Technical design
 
@@ -445,5 +445,5 @@ These are accepted for v1 on purpose. They will be revisited once the app has be
 10. **Older accounts have no email address**, and nobody can add one in v1.
 11. **Reloading the result screen skips to the next question.** The result is kept in the browser only; the answer itself is saved.
 12. **The email links back to the address the request came from.** Behind a proxy that changes the host or scheme, `APP_URL` and Laravel's trusted proxies must be configured.
-13. **The theme is kept per device, not per account.** It does not follow the user to another browser, and it does not follow the system's dark mode. The landing page has no theme button; it uses the theme chosen in the app.
+13. **The theme is kept per device, not per account.** It does not follow the user to another browser, and it does not follow the system's dark mode.
 14. **Card reports are not stored.** They exist only as emails to the first admin. Other admins do not get them, and nothing marks a card as reported or a report as handled. Reports can only be sent from the result screen, not from the session summary.
